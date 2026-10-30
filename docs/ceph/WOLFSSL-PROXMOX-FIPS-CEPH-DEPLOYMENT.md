@@ -46,8 +46,9 @@ dpkg-query -W ceph-common ceph-mon ceph-mgr ceph-osd ceph-volume wolfssl-fips-pv
 ```
 
 Require the wolfSSL Ceph builds (`~wolfcryptfips` in the package versions). The metapackage
-supplies the Ceph service environment and compatible cryptsetup/ceph-volume settings. Open a
-new login session so that command-line Ceph clients receive the packaged environment.
+supplies the Ceph service environment and compatible cryptsetup/ceph-volume settings. The Ceph
+daemons, the kernel Ceph clients and QEMU's RBD client use wolfCrypt. Ceph commands run from an
+administrator's shell, such as `ceph` and `rbd`, run on OpenSSL's default provider.
 
 Before any Ceph daemon exists, the verifier's Ceph-daemon check can fail because no daemon is
 running. Corosync is also not yet running. Resolve other applicable failures before continuing;
@@ -120,8 +121,11 @@ migration is required.
 
 Create pools and register RBD storage using the
 [Proxmox Ceph instructions](https://pve.proxmox.com/pve-docs/chapter-pveceph.html).
-All OSDs backing those pools must be encrypted. Encryption does not follow a guest moved to
-another, unencrypted storage.
+Create each pool with `--pg_autoscale_mode on`, or set it afterward with
+`ceph osd pool set <pool> pg_autoscale_mode on`. With the default `warn` mode, a new cluster
+holding little data reports `HEALTH_WARN` for too many placement groups, and section 5's
+verifier fails its Ceph health check. All OSDs backing those pools must be encrypted.
+Encryption does not follow a guest moved to another, unencrypted storage.
 
 For CephFS, create the filesystem without automatic Proxmox storage registration. Replace
 `<cephfs-name>` with the filesystem name and select pool settings using the Proxmox instructions:
