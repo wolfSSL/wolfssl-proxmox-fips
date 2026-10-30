@@ -41,10 +41,10 @@ In the Proxmox web interface:
 Do not select SPICE/QXL display, SPICE audio or SPICE USB redirection. The wolfSSL-configured
 host does not support SPICE. Use the standard VGA/noVNC console or another supported display.
 
-The APT installation supplies the system OpenSSL provider and required wrappers. Web-interface
-imports do not require a separate provider configuration. `qemu-img` need not load wolfProvider
-when it only copies local disk data; destination storage supplies the encryption. The ESXi
-connection uses the importer's TLS path.
+Web-interface imports do not require a separate provider configuration. The ESXi importer
+(`esxi-folder-fuse`) and `qemu-img` run on OpenSSL's default provider, so the connection to the
+ESXi host and the disk copy are outside wolfCrypt. The destination storage encrypts the
+imported disks.
 
 ## 3. Verify before cutover
 
