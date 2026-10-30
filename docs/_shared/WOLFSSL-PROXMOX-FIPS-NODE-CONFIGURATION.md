@@ -115,40 +115,65 @@ sshd -t && systemctl restart ssh
 
 ### 4.2 Provider cannot load
 
-A missing or damaged provider can disable SSH, management login, corosync and storage
-unlock. Diagnose at the console before restarting services:
+A missing or damaged provider module can disable SSH, management login, corosync and storage
+unlock. If `/etc/wolfprovider/openssl.cnf` is missing or empty, the opposite happens: those
+services start on OpenSSL's default provider, outside wolfCrypt and without an error, and
+`wolfssl-fips-pve-verify` fails. Diagnose at the console before restarting services:
 
 ```sh
-openssl dgst -sha256 /dev/null
+OPENSSL_CONF=/etc/wolfprovider/openssl.cnf openssl list -providers
+OPENSSL_CONF=/etc/wolfprovider/openssl.cnf openssl dgst -sha256 /dev/null
 echo $?
-journalctl -b SYSLOG_FACILITY=10 --grep='provider error'
 ```
 
-A working digest prints `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
-and exits `0`. An empty `openssl list -providers` listing is a failure even if it exits `0`.
+The listing must show `name: wolfSSL Provider FIPS` with `status: active`, and the digest must
+be `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` with exit status `0`.
+An empty listing means the module is missing or cannot load, even though it exits `0`.
+OpenSSL's default provider in the listing means the configuration file is missing or empty;
+the digest still succeeds in that case, so go by the listing. Keep the `OPENSSL_CONF` prefix:
+without it, `openssl` uses OpenSSL's default provider and prints the digest even when
+wolfProvider is missing.
 
-If `libwolfprov.so` was moved, restore that file. If it was deleted, reinstall the provider
-from a cached package or download it on a working node using the same wolfSSL repository
-channel, then transfer it through trusted removable or virtual media. APT downloads can
-fail while the provider is unavailable; `dpkg` can install the local package.
-
-On the working node:
+If the configuration file is missing or empty, restore it from the package. Move an empty or
+edited file aside first so that dpkg treats it as missing, then reboot so that every service
+that started without wolfProvider starts again with it:
 
 ```sh
-apt download wolfprovider-fips
+[ -e /etc/wolfprovider/openssl.cnf ] && mv /etc/wolfprovider/openssl.cnf /root/openssl.cnf.old
+apt install --reinstall -o Dpkg::Options::=--force-confmiss wolfprovider-fips
+OPENSSL_CONF=/etc/wolfprovider/openssl.cnf openssl list -providers
 ```
 
-At the affected node's console, replace `<provider-package.deb>` with the transferred or
-cached package matching the installed library:
+If `libwolfprov.so` was moved, restore that file. If it was deleted, reinstall the provider on
+the node itself. APT does not use wolfProvider and keeps working while the provider cannot load:
 
 ```sh
-dpkg -i <provider-package.deb>
+apt install --reinstall wolfprovider-fips
 test -s /etc/wolfprovider/openssl.cnf
 ```
 
 If the configuration check fails, or the provider still fails to load, stop and obtain
-wolfSSL support for package recovery. Removing service drop-ins alone cannot restore
-stock OpenSSL: the installed library selects wolfProvider by default.
+wolfSSL support for package recovery. To regain access meanwhile, mask the SSH, management
+interface and corosync drop-ins. This puts those services on OpenSSL's default provider,
+outside wolfCrypt and without an error:
+
+```sh
+for u in ssh pveproxy corosync; do
+  mkdir -p /etc/systemd/system/$u.service.d
+  ln -sf /dev/null /etc/systemd/system/$u.service.d/50-wolfssl-fips.conf
+done
+systemctl daemon-reload
+systemctl restart ssh pveproxy
+```
+
+Leave corosync running if it is up; if it failed to start, `systemctl restart corosync` starts
+it on the default provider. Remove the three masks once the provider loads again, before the
+reboot below:
+
+```sh
+rm /etc/systemd/system/{ssh,pveproxy,corosync}.service.d/50-wolfssl-fips.conf
+systemctl daemon-reload
+```
 
 Once the configuration file exists and the digest check succeeds again, APT can repair the
 shared packages. Reinstall provider, library and config in the same transaction; the APT

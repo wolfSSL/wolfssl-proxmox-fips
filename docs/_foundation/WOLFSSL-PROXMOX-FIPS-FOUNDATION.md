@@ -42,9 +42,13 @@ approved services and operating-environment requirements with wolfSSL against th
 Security Policy. Installing these packages does not validate the whole operating system or
 Proxmox deployment.
 
-The integration configures management TLS, OpenSSL consumers, SSH, the kernel random-number
-path and the selected storage and backup paths to use wolfCrypt. Guest operating systems are
-unchanged. Virtual TPM cryptography remains outside the wolfCrypt validated boundary.
+The integration configures web and API TLS, SSH, corosync, the Ceph daemons, QEMU, the Proxmox
+Backup Server clients, the kernel random-number path and the selected storage to use wolfCrypt.
+Other programs that use OpenSSL run on OpenSSL's default provider, outside wolfCrypt, and report
+no error. These include `pvedaemon` (login tickets), the SSH client that migration and
+replication start, APT and administrator shells; `wolfssl-fips-pve-verify` lists the ones
+running. Guest operating systems are unchanged. Virtual TPM cryptography remains outside the
+wolfCrypt validated boundary.
 Repository signature verification also has exceptions: licensed APT and `pveam` on both
 channels use Sequoia (`sqv`), outside wolfCrypt.
 
