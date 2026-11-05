@@ -24,10 +24,12 @@ for encrypted guest disks. An ext4/LVM root keeps storage-encryption recovery se
 booting the host. Encrypted root installations are outside this guide's scope.
 
 This edition covers fresh nodes and new clusters made entirely of wolfSSL-configured nodes.
-Converting an existing production node or manual-build installation in place, mixing stock
-and wolfSSL nodes in one cluster, and removing the integration packages are unsupported.
-Return a node to stock Proxmox by reinstalling it. Guests can be imported onto a freshly
-prepared target using the migration guides.
+Converting an existing production node or manual-build installation in place and mixing stock
+and wolfSSL nodes in one cluster are unsupported. Configured nodes return to stock Proxmox by
+reinstallation. Before guest, storage or cluster configuration, an unused standalone Foundation
+node can use the limited [channel-change](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
+or [stock-return](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#6-return-an-unused-foundation-node-to-stock) procedure.
+Guests can be imported onto a freshly prepared target using the migration guides.
 
 Choose one repository for the installation:
 
@@ -41,6 +43,11 @@ the intended deployment; do not configure both sources together. Confirm the mod
 approved services and operating-environment requirements with wolfSSL against the applicable
 Security Policy. Installing these packages does not validate the whole operating system or
 Proxmox deployment.
+
+If Foundation was completed with Ready but licensed v5 is required, follow
+[Change a Ready Foundation node to licensed v5](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
+before continuing to storage or cluster configuration. This is a repository replacement and
+full upgrade; uninstalling Ready first is unnecessary.
 
 The integration configures management TLS, OpenSSL consumers, SSH, the kernel random-number
 path and the selected storage and backup paths to use wolfCrypt. Guest operating systems are
@@ -281,4 +288,8 @@ identifies affected VM settings and supplies their removal commands.
 
 Complete [Backup](../_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md) before relying on the deployment.
 Use [Node maintenance and recovery](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md)
-for subsequent updates and access recovery.
+for subsequent updates and access recovery. Before configuring storage or a cluster, use its
+[licensed-v5 channel change](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
+if the repository choice needs correcting. Its
+[stock-return procedure](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#6-return-an-unused-foundation-node-to-stock)
+is limited to unused standalone Foundation nodes with a supported GRUB boot configuration.

@@ -35,6 +35,10 @@ nodes can also use the LUKS package for separate local encrypted storage.
    first. For Ceph, complete its node-preparation steps before the wolfSSL installation.
 2. Complete [Foundation](docs/_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md), including repository
    selection, package installation and reboot, on each node.
+   Before configuring storage or a cluster, an unused Foundation node can
+   [change from Ready to licensed v5](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
+   or [return to stock packages](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#6-return-an-unused-foundation-node-to-stock)
+   within the stated limits.
 3. Configure the selected storage. For Ceph, form the new all-FIPS Proxmox cluster before
    initializing Ceph.
 4. Configure and test [Backup](docs/_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md). Use
@@ -61,7 +65,7 @@ or an external backup destination.
 | [ZFS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-ZFS.md) | Deploy local storage with ZFS native encryption. |
 | [LUKS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md) | Deploy local storage with LUKS/dm-crypt encryption. |
 | [Cluster](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md) | Create and operate a new all-FIPS cluster, including guest migration and HA requirements; replication requires ZFS. |
-| [Node Configuration and Recovery](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md) | Apply supported package updates, verify activation, and recover administrative access and guest startup. |
+| [Node Configuration and Recovery](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md) | Apply supported updates, change an unused Foundation node to licensed v5 or stock packages, verify activation, and recover access and guest startup. |
 | [Backup](docs/_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md) | Configure and verify backup and restore with vzdump or Proxmox Backup Server. |
 | [Migration from Proxmox VE](docs/_migration/WOLFSSL-PROXMOX-FIPS-MIGRATION-PVE.md) | Move guests from an existing Proxmox deployment or its Proxmox Backup Server datastore. |
 | [Migration from vSphere](docs/_migration/WOLFSSL-PROXMOX-FIPS-MIGRATION-VSPHERE.md) | Import guests from VMware vSphere or ESXi. |
@@ -86,8 +90,12 @@ See the [patch notes](patches/ceph/README.md) for upstream provenance and licens
 
 This edition covers fresh Proxmox nodes and new clusters made entirely of wolfSSL-configured
 nodes. Existing production or manual-build installations are not converted in place, mixed
-stock/wolfSSL clusters are unsupported, and returning a node to stock requires reinstallation.
-Guests can be migrated onto freshly deployed targets using the migration guides.
+stock/wolfSSL clusters are unsupported, and configured nodes return to stock by reinstallation.
+The maintenance guide provides limited procedures for an unused standalone Foundation node
+to change from Ready to licensed v5, or to return to stock packages on a supported GRUB boot
+configuration, before guest, storage or cluster configuration. These procedures do not qualify
+conversion of existing encrypted data. Guests can be migrated onto freshly deployed targets
+using the migration guides.
 
 The public **FIPS Ready** channel is for evaluation and is not a FIPS-validated module. The
 **licensed FIPS v5** channel supplies the licensed modules. Confirm applicable module versions,
