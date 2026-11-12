@@ -41,10 +41,9 @@ In the Proxmox web interface:
 Do not select SPICE/QXL display, SPICE audio or SPICE USB redirection. The wolfSSL-configured
 host does not support SPICE. Use the standard VGA/noVNC console or another supported display.
 
-Web-interface imports do not require a separate provider configuration. The ESXi importer
-(`esxi-folder-fuse`) and `qemu-img` run on OpenSSL's default provider, so the connection to the
-ESXi host and the disk copy are outside wolfCrypt. The destination storage encrypts the
-imported disks.
+Web-interface imports require no separate provider configuration. The ESXi importer
+(`esxi-folder-fuse`) and `qemu-img` use OpenSSL's default provider, so the ESXi connection and
+disk copy are outside wolfCrypt. The destination storage encrypts the imported disks.
 
 ## 3. Verify before cutover
 

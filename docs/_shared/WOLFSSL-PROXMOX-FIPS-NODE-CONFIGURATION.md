@@ -118,9 +118,9 @@ sshd -t && systemctl restart ssh
 ### 4.2 Provider cannot load
 
 A missing or damaged provider module can disable SSH, management login, corosync and storage
-unlock. If `/etc/wolfprovider/openssl.cnf` is missing or empty, the opposite happens: those
-services start on OpenSSL's default provider, outside wolfCrypt and without an error, and
-`wolfssl-fips-pve-verify` fails. Diagnose at the console before restarting services:
+unlock. If `/etc/wolfprovider/openssl.cnf` is missing or empty, these services start on
+OpenSSL's default provider, outside wolfCrypt and without error; `wolfssl-fips-pve-verify`
+fails. Diagnose at the console before restarting services:
 
 ```sh
 OPENSSL_CONF=/etc/wolfprovider/openssl.cnf openssl list -providers
@@ -130,15 +130,15 @@ echo $?
 
 The listing must show `name: wolfSSL Provider FIPS` with `status: active`, and the digest must
 be `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` with exit status `0`.
-An empty listing means the module is missing or cannot load, even though it exits `0`.
+An empty listing means the module is missing or cannot load, despite exit status `0`.
 OpenSSL's default provider in the listing means the configuration file is missing or empty;
-the digest still succeeds in that case, so go by the listing. Keep the `OPENSSL_CONF` prefix:
+the digest still succeeds, so rely on the listing. Keep the `OPENSSL_CONF` prefix:
 without it, `openssl` uses OpenSSL's default provider and prints the digest even when
 wolfProvider is missing.
 
 If the configuration file is missing or empty, restore it from the package. Move an empty or
-edited file aside first so that dpkg treats it as missing, then reboot so that every service
-that started without wolfProvider starts again with it:
+edited file aside first so dpkg treats it as missing, then reboot to activate wolfProvider
+in every service that started without it:
 
 ```sh
 [ -e /etc/wolfprovider/openssl.cnf ] && mv /etc/wolfprovider/openssl.cnf /root/openssl.cnf.old
@@ -146,8 +146,8 @@ apt install --reinstall -o Dpkg::Options::=--force-confmiss wolfprovider-fips
 OPENSSL_CONF=/etc/wolfprovider/openssl.cnf openssl list -providers
 ```
 
-If `libwolfprov.so` was moved, restore that file. If it was deleted, reinstall the provider on
-the node itself. APT does not use wolfProvider and keeps working while the provider cannot load:
+If `libwolfprov.so` was moved, restore it. If deleted, reinstall the provider on the affected
+node. APT does not use wolfProvider and works even when the provider cannot load:
 
 ```sh
 apt install --reinstall wolfprovider-fips
@@ -156,8 +156,8 @@ test -s /etc/wolfprovider/openssl.cnf
 
 If the configuration check fails, or the provider still fails to load, stop and obtain
 wolfSSL support for package recovery. To regain access meanwhile, mask the SSH, management
-interface and corosync drop-ins. This puts those services on OpenSSL's default provider,
-outside wolfCrypt and without an error:
+interface and corosync drop-ins. These services then use OpenSSL's default provider,
+outside wolfCrypt and without error:
 
 ```sh
 for u in ssh pveproxy corosync; do
@@ -168,9 +168,8 @@ systemctl daemon-reload
 systemctl restart ssh pveproxy
 ```
 
-Leave corosync running if it is up; if it failed to start, `systemctl restart corosync` starts
-it on the default provider. Remove the three masks once the provider loads again, before the
-reboot below:
+Leave corosync running; if it failed to start, `systemctl restart corosync` starts it on the
+default provider. Once the provider loads again, remove the three masks before the reboot below:
 
 ```sh
 rm /etc/systemd/system/{ssh,pveproxy,corosync}.service.d/50-wolfssl-fips.conf

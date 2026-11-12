@@ -107,8 +107,8 @@ Reboot one node at a time, waiting for it to return to quorum before rebooting a
 activates the service configuration and corrects the corosync authkey permissions on joined
 nodes. Keep console access available: a provider-load failure prevents corosync from starting.
 If `/etc/wolfprovider/openssl.cnf` is missing or empty, corosync instead starts on OpenSSL's
-default provider, outside wolfCrypt and without an error; `wolfssl-fips-pve-verify` fails in
-that case. Restore the file as described in
+default provider, outside wolfCrypt and without error; `wolfssl-fips-pve-verify` fails.
+Restore the file as described in
 [Node Configuration, section 4.2](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#42-provider-cannot-load).
 
 ```sh
@@ -141,9 +141,9 @@ migration: secure
 ```
 
 Secure migration transports memory and local disks over SSH. Foundation provides the compatible
-SSH implementation and keys. The receiving node's SSH server uses wolfCrypt; the `ssh` client
-that the sending node starts runs on OpenSSL's default provider, outside wolfCrypt. Do not
-select `insecure`, which can send guest memory unencrypted.
+SSH implementation and keys. The receiving node's SSH server uses wolfCrypt; the sending
+node's `ssh` client uses OpenSSL's default provider, outside wolfCrypt. Do not select `insecure`,
+which can send guest memory unencrypted.
 Use Proxmox's [migration procedure](https://pve.proxmox.com/pve-docs/chapter-pvecm.html#_guest_migration)
 for the workload, including `--with-local-disks` when live-migrating a VM with local disks.
 Containers use restart migration. Check every guest volume, including EFI and TPM-state storage,
@@ -170,9 +170,9 @@ guest's data. Encryption of the source does not ensure encryption at the destina
 ## 4. Replicate and back up encrypted guests
 
 Use [Proxmox storage replication](https://pve.proxmox.com/pve-docs/chapter-pvesr.html) for local
-ZFS storage. LUKS directory storage does not support `pvesr`. Replication uses the same SSH
-transport, with the same split between the receiving server and the sending client; the
-receiving ZFS dataset encrypts the data under its own encryption root. Apply section 3's
+ZFS storage. LUKS directory storage does not support `pvesr`. Replication uses SSH with the same
+server and client providers as migration; the receiving ZFS dataset encrypts the data under
+its own encryption root. Apply section 3's
 unlock check before replication and check the received volume:
 
 ```sh

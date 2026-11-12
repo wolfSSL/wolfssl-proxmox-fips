@@ -23,7 +23,7 @@ ceph --version
 ```
 
 Confirm that `ceph --version` reports Tentacle 20.2.5 before continuing. Do not initialize Ceph
-yet. Squid is outside the scope of this deployment. Do not run `pveceph install` again after
+yet. Squid is outside this deployment's scope. Do not run `pveceph install` again after
 configuring the wolfSSL repository; select the Ceph metapackage during Foundation instead.
 
 The Ceph and ZFS metapackages conflict. Select Ceph for these nodes; encrypted ZFS on the same
@@ -46,10 +46,10 @@ Check the installed Ceph packages on every node:
 dpkg-query -W ceph-common ceph-mon ceph-mgr ceph-osd ceph-volume wolfssl-fips-pve-ceph
 ```
 
-Require Ceph 20.2.5 wolfSSL builds, identified by `~wolfcryptfips` in the Ceph package versions.
+Require Ceph 20.2.5 wolfSSL builds (`~wolfcryptfips` in the Ceph package versions).
 The metapackage supplies the Ceph service environment and compatible cryptsetup/ceph-volume
-settings. The Ceph daemons, the kernel Ceph clients and QEMU's RBD client use wolfCrypt. Ceph
-commands run from an administrator's shell, such as `ceph` and `rbd`, run on OpenSSL's default
+settings. Ceph daemons, kernel Ceph clients and QEMU's RBD client use wolfCrypt. Ceph
+commands run from an administrator's shell, such as `ceph` and `rbd`, use OpenSSL's default
 provider.
 
 Before any Ceph daemon exists, the verifier's Ceph-daemon check can fail because no daemon is
@@ -134,11 +134,10 @@ For CephFS, first create the metadata servers required by the planned topology u
 Run `pveceph mds create` on each planned MDS host. At least one MDS must be running in standby
 before creating the filesystem.
 
-Require `ceph health` to report `HEALTH_OK` before continuing. If a placement-group reduction is
-in progress, allow it to complete; this can take several minutes. Exceeding the placement-group
-limit can prevent creation of the filesystem pools. Check the task output and verify that the
-filesystem exists, because `pveceph fs create` can return exit status `0` even when its creation
-task fails.
+Require `ceph health` to report `HEALTH_OK` before continuing. Wait for any placement-group
+reduction to complete; this can take several minutes. Exceeding the placement-group limit can
+prevent creation of the filesystem pools. Check the task output and verify that the filesystem
+exists: `pveceph fs create` can return exit status `0` even when its creation task fails.
 
 Create the filesystem without automatic Proxmox storage registration. Replace `<cephfs-name>`
 with the filesystem name and select pool settings using the Proxmox instructions:
@@ -148,7 +147,7 @@ pveceph fs create --name <cephfs-name> --add-storage 0
 ceph fs ls
 ```
 
-Require `<cephfs-name>` in the `ceph fs ls` output. If it is absent, resolve the creation failure
+Require `<cephfs-name>` in the `ceph fs ls` output. If absent, resolve the creation failure
 before configuring or registering the storage.
 
 Complete the applicable client configuration below before registering CephFS storage.
@@ -179,10 +178,10 @@ pvesm add cephfs <cephfs-storage> --fs-name <cephfs-name> \
   --content backup,iso,vztmpl,snippets --options ms_mode=secure
 ```
 
-Include any other required mount options in the same comma-separated option list. Before
-putting data on these mounts, reboot each node in turn, waiting for `HEALTH_OK` before
-rebooting the next. Then verify the mounts as described in section 5.
-After adding a monitor later, add port 3300 to its new `mon_host` entry as well, because
+Include other required mount options in the same comma-separated list. Before writing data to
+these mounts, reboot each node in turn, waiting for `HEALTH_OK` before rebooting the next.
+Then verify the mounts as described in section 5.
+After adding a monitor later, add port 3300 to its new `mon_host` entry;
 `pveceph mon create` writes the entry without a port.
 
 ### 4.2 FUSE CephFS
@@ -233,21 +232,20 @@ ceph -s
 ceph mon stat
 ```
 
-Monitors use the addresses in the monitor map; setting `ms_bind_msgr1` to `false` does not
+Monitors use addresses from the monitor map; setting `ms_bind_msgr1` to `false` does not
 remove their msgr1 listeners. Before removing those endpoints, complete section 4.1's `mon_host`
 configuration if kernel CephFS is used. Process one monitor at a time. Run `ceph mon dump` and
 identify the monitor's name and msgr2 endpoints. Replace `<mon-id>` with the name following
-`mon.` and `<monitor-address>` with its IP address. For IPv6, enclose the IP address in
-brackets, producing an address list such as `[v2:[2001:db8::1]:3300]`. If the monitor has
-multiple msgr2 endpoints, retain all intended endpoints in the address list:
+`mon.` and `<monitor-address>` with its IP address. Enclose IPv6 addresses in brackets, as in
+`[v2:[2001:db8::1]:3300]`. If the monitor has multiple msgr2 endpoints, retain all intended
+endpoints in the address list:
 
 ```sh
 ceph mon set-addrs <mon-id> '[v2:<monitor-address>:3300]'
 ```
 
-Restart that monitor on its own node. Before processing another monitor, require the restarted
-monitor and all other intended monitors to be in quorum, and require `ceph health` to report
-`HEALTH_OK`:
+Restart the monitor on its own node. Before processing another, require the restarted monitor
+and all other intended monitors in quorum, and require `ceph health` to report `HEALTH_OK`:
 
 ```sh
 systemctl restart ceph-mon@<mon-id>

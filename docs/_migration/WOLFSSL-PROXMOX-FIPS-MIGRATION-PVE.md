@@ -71,9 +71,9 @@ Select the snapshot in the Proxmox restore interface and explicitly select the e
 destination storage. The same destination requirement applies to archives copied to the
 node: their location does not determine where restored disks are written.
 
-Restores from Proxmox Backup Server need no `OPENSSL_CONF` prefix or manual wrapper, because
-the APT packages wrap `pbs-restore`. A restore from a vzdump VMA archive runs `vma` on OpenSSL's
-default provider, outside wolfCrypt; the destination storage still encrypts the restored disks.
+Proxmox Backup Server restores need no `OPENSSL_CONF` prefix or manual wrapper: the APT
+packages wrap `pbs-restore`. Restoring a vzdump VMA archive runs `vma` on OpenSSL's default
+provider, outside wolfCrypt; the destination storage encrypts the restored disks.
 
 A restore retains guest settings. Remove SPICE display, audio and USB redirection settings
 before starting an affected VM; the packaged verifier lists incompatible settings and their

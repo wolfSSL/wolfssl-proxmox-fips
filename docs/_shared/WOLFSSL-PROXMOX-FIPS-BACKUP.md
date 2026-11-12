@@ -30,8 +30,8 @@ cat /etc/vzdump.conf
 
 Keep file archives on a destination whose encryption and unlock behavior have been verified
 using the selected storage guide. Do not use the unencrypted `local` directory for backups.
-If the listing includes `local`, remove `backup` from its content types and keep any other
-types in use. Storage configuration is shared across a cluster, so make this change once
+If the listing includes `local`, remove `backup` from its content types, retaining other
+types in use. Storage configuration is shared across the cluster; make this change once
 per cluster. For the installer defaults, run:
 
 ```sh
@@ -39,9 +39,8 @@ pvesm set local --content iso,vztmpl,import
 pvesm status --content backup
 ```
 
-Confirm that all destinations in the listing are encrypted. The verifier does not inspect
-every job's `dumpdir`; such an override can bypass the selected storage. Correct jobs before
-running them.
+Confirm all listed destinations are encrypted. The verifier does not inspect every job's
+`dumpdir`; this override can bypass the selected storage. Correct jobs before running them.
 
 For a directory destination, configure its actual encrypted mount as a prerequisite. Replace
 `<backup-storage>` with the storage ID and `<encrypted-mount>` with its mounted filesystem:
