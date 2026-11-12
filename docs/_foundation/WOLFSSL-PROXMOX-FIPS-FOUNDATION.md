@@ -226,11 +226,19 @@ compatible Proxmox authentication and supporting library packages. Do not add th
 manual-build wrappers or provider configuration on top of them.
 
 Open a fresh SSH connection with the key from section 2. If the node previously advertised
-an Ed25519 host key, verify its ECDSA or RSA host-key fingerprint at the console before
-accepting the changed key on the workstation. For the ECDSA fingerprint:
+an Ed25519 host key, the workstation's SSH client refuses the connection because the host key
+changed. Verify the node's ECDSA or RSA host-key fingerprint at the console. For the ECDSA
+fingerprint:
 
 ```sh
 ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub
+```
+
+Then remove the node's old entry on the workstation, replacing `<node>` with the name or
+address used to connect, and reconnect. Accept the offered key only if its fingerprint matches:
+
+```sh
+ssh-keygen -R <node>
 ```
 
 ## 6. Reboot and verify
@@ -265,9 +273,9 @@ The running kernel must contain `+wolfcrng`, and `fips_enabled` must be `1`.
 Wait for `pve-guests` to become `active` before running the verifier. With `--login`, the
 verifier prompts for the root password and checks management login as well as configuration.
 Require the kernel, wolfCrypt/provider, SSH and management-login checks to pass. Before
-encrypted storage is created, expect failures for missing storage or unlock configuration,
-unset encrypted container-backup staging, and guest, backup or import content enabled on
-installer-created storage. Resolve all other `FAIL` results before continuing. Complete the
+encrypted storage is created, expect failures for missing storage or unlock configuration and
+for guest, backup or import content enabled on installer-created storage. LUKS nodes also
+report unset encrypted container-backup staging. Resolve all other `FAIL` results before continuing. Complete the
 selected storage guide, then repeat verification and resolve those deferred failures.
 Cluster checks follow cluster configuration.
 On Ceph-prepared nodes, the no-running-Ceph-daemon check is expected until the new Ceph cluster
