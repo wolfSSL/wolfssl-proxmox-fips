@@ -11,19 +11,20 @@ before preparing the first node.
 
 ## 1. Prepare the Ceph packages
 
-Use fresh Proxmox VE 9 nodes, with separate OSD disks and no existing Ceph cluster. Install
-Proxmox's Tentacle packages on each node **before** adding the wolfSSL repository or installing
-the Foundation packages. The following selects the no-subscription repository; use
-`enterprise` instead when the nodes have the required subscriptions.
+Use fresh Proxmox VE 9 nodes, with separate OSD disks and no existing Ceph cluster. This
+deployment requires Ceph Tentacle 20.2.5. Install Proxmox's Tentacle packages on each node
+**before** adding the wolfSSL repository or installing the Foundation packages. The following
+selects the no-subscription repository; use `enterprise` instead when the nodes have the
+required subscriptions.
 
 ```sh
 pveceph install --repository no-subscription --version tentacle
 ceph --version
 ```
 
-Require Tentacle 20.2.4 for this new deployment. Do not initialize Ceph yet. Squid is not part
-of this wolfSSL Ceph deployment. Do not run `pveceph install` again after configuring the
-wolfSSL repository; select the Ceph metapackage during Foundation instead.
+Confirm that `ceph --version` reports Tentacle 20.2.5 before continuing. Do not initialize Ceph
+yet. Squid is outside this deployment's scope. Do not run `pveceph install` again after
+configuring the wolfSSL repository; select the Ceph metapackage during Foundation instead.
 
 The Ceph and ZFS metapackages conflict. Select Ceph for these nodes; encrypted ZFS on the same
 node is outside this guide's wolfCrypt storage coverage. Separate local LUKS volumes are
@@ -45,9 +46,11 @@ Check the installed Ceph packages on every node:
 dpkg-query -W ceph-common ceph-mon ceph-mgr ceph-osd ceph-volume wolfssl-fips-pve-ceph
 ```
 
-Require the wolfSSL Ceph builds (`~wolfcryptfips` in the package versions). The metapackage
-supplies the Ceph service environment and compatible cryptsetup/ceph-volume settings. Open a
-new login session so that command-line Ceph clients receive the packaged environment.
+Require Ceph 20.2.5 wolfSSL builds (`~wolfcryptfips` in the Ceph package versions).
+The metapackage supplies the Ceph service environment and compatible cryptsetup/ceph-volume
+settings. Ceph daemons, kernel Ceph clients and QEMU's RBD client use wolfCrypt. Ceph
+commands run from an administrator's shell, such as `ceph` and `rbd`, use OpenSSL's default
+provider.
 
 Before any Ceph daemon exists, the verifier's Ceph-daemon check can fail because no daemon is
 running. Corosync is also not yet running. Resolve other applicable failures before continuing;
@@ -113,22 +116,39 @@ encrypt the Proxmox root disk, monitor metadata, node-local backup files or ever
 the node. Follow [Backup](../_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md) for an independent backup
 and tested restore with retained encryption keys.
 
-A cluster created on this Ceph 20.2.4 build has AES-256 cephx keys from creation; no cephx key
+A cluster created on this Ceph 20.2.5 build has AES-256 cephx keys from creation; no cephx key
 migration is required.
 
 ## 4. Configure Ceph storage clients
 
 Create pools and register RBD storage using the
 [Proxmox Ceph instructions](https://pve.proxmox.com/pve-docs/chapter-pveceph.html).
-All OSDs backing those pools must be encrypted. Encryption does not follow a guest moved to
-another, unencrypted storage.
+Create each pool with `--pg_autoscale_mode on`, or set it afterward with
+`ceph osd pool set <pool> pg_autoscale_mode on`. With the default `warn` mode, a new cluster
+holding little data reports `HEALTH_WARN` for too many placement groups, and section 5's
+verifier fails its Ceph health check. All OSDs backing those pools must be encrypted.
+Encryption does not follow a guest moved to another, unencrypted storage.
 
-For CephFS, create the filesystem without automatic Proxmox storage registration. Replace
-`<cephfs-name>` with the filesystem name and select pool settings using the Proxmox instructions:
+For CephFS, first create the metadata servers required by the planned topology using the
+[Proxmox MDS instructions](https://pve.proxmox.com/pve-docs/chapter-pveceph.html#pveceph_fs_mds).
+Run `pveceph mds create` on each planned MDS host. At least one MDS must be running in standby
+before creating the filesystem.
+
+Require `ceph health` to report `HEALTH_OK` before continuing. Wait for any placement-group
+reduction to complete; this can take several minutes. Exceeding the placement-group limit can
+prevent creation of the filesystem pools. Check the task output and verify that the filesystem
+exists: `pveceph fs create` can return exit status `0` even when its creation task fails.
+
+Create the filesystem without automatic Proxmox storage registration. Replace `<cephfs-name>`
+with the filesystem name and select pool settings using the Proxmox instructions:
 
 ```sh
 pveceph fs create --name <cephfs-name> --add-storage 0
+ceph fs ls
 ```
+
+Require `<cephfs-name>` in the `ceph fs ls` output. If absent, resolve the creation failure
+before configuring or registering the storage.
 
 Complete the applicable client configuration below before registering CephFS storage.
 
@@ -158,9 +178,11 @@ pvesm add cephfs <cephfs-storage> --fs-name <cephfs-name> \
   --content backup,iso,vztmpl,snippets --options ms_mode=secure
 ```
 
-Include any other required mount options in the same comma-separated option list. Reboot each
-node in turn before putting data on these mounts, then verify the mounts as described in section 5.
-After adding a monitor later, add port 3300 to its new `mon_host` entry as well.
+Include other required mount options in the same comma-separated list. Before writing data to
+these mounts, reboot each node in turn, waiting for `HEALTH_OK` before rebooting the next.
+Then verify the mounts as described in section 5.
+After adding a monitor later, add port 3300 to its new `mon_host` entry;
+`pveceph mon create` writes the entry without a port.
 
 ### 4.2 FUSE CephFS
 
@@ -210,6 +232,37 @@ ceph -s
 ceph mon stat
 ```
 
+Monitors use addresses from the monitor map; setting `ms_bind_msgr1` to `false` does not
+remove their msgr1 listeners. Before removing those endpoints, complete section 4.1's `mon_host`
+configuration if kernel CephFS is used. Process one monitor at a time. Run `ceph mon dump` and
+identify the monitor's name and msgr2 endpoints. Replace `<mon-id>` with the name following
+`mon.` and `<monitor-address>` with its IP address. Enclose IPv6 addresses in brackets, as in
+`[v2:[2001:db8::1]:3300]`. If the monitor has multiple msgr2 endpoints, retain all intended
+endpoints in the address list:
+
+```sh
+ceph mon set-addrs <mon-id> '[v2:<monitor-address>:3300]'
+```
+
+Restart the monitor on its own node. Before processing another, require the restarted monitor
+and all other intended monitors in quorum, and require `ceph health` to report `HEALTH_OK`:
+
+```sh
+systemctl restart ceph-mon@<mon-id>
+ceph mon stat
+ceph health
+```
+
+After the last monitor, check the monitor map and, on each monitor node, the listening ports:
+
+```sh
+ceph mon dump
+ss -ltnH | awk '{print $4}' | grep -E ':(6789|3300)$'
+```
+
+Require every intended monitor to advertise only msgr2 endpoints on port 3300. On each monitor
+node, require a listener on port 3300 and no listener on port 6789.
+
 Finally, run on every node:
 
 ```sh
@@ -219,9 +272,19 @@ ceph mon stat
 ```
 
 Resolve every failure and review warnings, including plaintext `local` or `local-lvm` storage
-eligibility. Require all intended OSDs `up` and `in`, all placement groups `active+clean`, and
-all intended monitors in quorum. The verifier checks provider activation, messenger policy,
-OSD encryption and relevant kernel clients; it does not prove every guest volume or backup
+eligibility. Require all intended OSDs `up` and `in`, all placement groups `active+clean`, all
+intended monitors in quorum, and all intended managers and metadata servers listed by `ceph -s`.
+`HEALTH_OK` can be reported while a standby is missing. If a daemon is missing and its unit on
+that node reports `Start request repeated too quickly`, clear the start limit and start it.
+Replace `<id>` with the daemon's name, usually the node name:
+
+```sh
+systemctl reset-failed ceph-mgr@<id>
+systemctl start ceph-mgr@<id>
+```
+
+Use `ceph-mds@<id>` for a metadata server. The verifier checks provider activation, messenger
+policy, OSD encryption and relevant kernel clients; it does not prove every guest volume or backup
 uses encrypted storage. Check those destinations before creating or importing guests.
 
 ## 6. Maintain the cluster
@@ -236,8 +299,10 @@ For a replacement OSD, follow Proxmox's
 [OSD replacement procedure](https://pve.proxmox.com/pve-docs/chapter-pveceph.html#pve_ceph_osd_replace), create the
 replacement with `--encrypted 1`, and repeat the header and cluster checks in sections 3 and 5.
 For an added node, repeat sections 1–2 before joining it through the Cluster guide. Create its
-Ceph services and encrypted OSDs, update kernel CephFS monitor addresses if applicable, and
-verify it before assigning guests.
+required Ceph services and encrypted OSDs. If a monitor is added, `pveceph mon create` registers
+both msgr2 and msgr1 addresses. For kernel CephFS, first add port 3300 to the new `mon_host`
+entry as described in section 4.1. Then configure the monitor's msgr2-only address list, restart
+it and complete section 5's checks. Verify the node before assigning guests.
 
 If a monitor is missing from `ceph mon stat`, inspect its service and monitor-map membership
 before continuing. If a CephFS mount fails after disabling msgr1, check port 3300 in

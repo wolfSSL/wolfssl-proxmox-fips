@@ -49,9 +49,13 @@ If Foundation was completed with Ready but licensed v5 is required, follow
 before continuing to storage or cluster configuration. This is a repository replacement and
 full upgrade; uninstalling Ready first is unnecessary.
 
-The integration configures management TLS, OpenSSL consumers, SSH, the kernel random-number
-path and the selected storage and backup paths to use wolfCrypt. Guest operating systems are
-unchanged. Virtual TPM cryptography remains outside the wolfCrypt validated boundary.
+The integration configures web and API TLS, SSH, corosync, the Ceph daemons, QEMU, the Proxmox
+Backup Server clients, the kernel random-number path and the selected storage to use wolfCrypt.
+Other OpenSSL programs use OpenSSL's default provider, outside wolfCrypt, without error.
+These include `pvedaemon` (login tickets), the SSH client used by migration and replication,
+APT and administrator shells; `wolfssl-fips-pve-verify` lists those running. Guest operating
+systems are unchanged. Virtual TPM cryptography remains outside the wolfCrypt validated
+boundary.
 Repository signature verification also has exceptions: licensed APT and `pveam` on both
 channels use Sequoia (`sqv`), outside wolfCrypt.
 
@@ -222,11 +226,20 @@ compatible Proxmox authentication and supporting library packages. Do not add th
 manual-build wrappers or provider configuration on top of them.
 
 Open a fresh SSH connection with the key from section 2. If the node previously advertised
-an Ed25519 host key, verify its ECDSA or RSA host-key fingerprint at the console before
-accepting the changed key on the workstation. For the ECDSA fingerprint:
+an Ed25519 host key, the workstation's SSH client refuses the connection because the host key
+changed. Verify the node's ECDSA or RSA host-key fingerprint at the console. For the ECDSA
+fingerprint:
 
 ```sh
 ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub
+```
+
+On the workstation, remove the node's old entry, replacing `<node>` with the host name or
+address in the SSH client's warning, then reconnect. Accept the offered key only if its
+fingerprint matches:
+
+```sh
+ssh-keygen -R <node>
 ```
 
 ## 6. Reboot and verify
@@ -261,10 +274,11 @@ The running kernel must contain `+wolfcrng`, and `fips_enabled` must be `1`.
 Wait for `pve-guests` to become `active` before running the verifier. With `--login`, the
 verifier prompts for the root password and checks management login as well as configuration.
 Require the kernel, wolfCrypt/provider, SSH and management-login checks to pass. Before
-encrypted storage is created, expect failures for missing storage or unlock configuration,
-unset encrypted container-backup staging, and guest, backup or import content enabled on
-installer-created storage. Resolve all other `FAIL` results before continuing. Complete the
-selected storage guide, then repeat verification and resolve those deferred failures.
+encrypted storage is created, expect failures for missing storage or unlock configuration and
+for guest or backup content enabled on installer-created storage; Ceph-prepared nodes report
+a warning for that content. LUKS nodes also report unset encrypted container-backup staging.
+Resolve all other `FAIL` results before continuing. Complete the selected storage guide, then
+repeat verification and resolve those deferred failures.
 Cluster checks follow cluster configuration.
 On Ceph-prepared nodes, the no-running-Ceph-daemon check is expected until the new Ceph cluster
 is initialized; repeat verification afterward.
