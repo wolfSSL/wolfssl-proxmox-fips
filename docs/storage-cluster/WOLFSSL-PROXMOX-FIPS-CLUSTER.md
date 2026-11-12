@@ -204,8 +204,9 @@ ceph mon ok-to-stop $(hostname)
 ```
 
 Run only the checks for roles hosted on that node, and proceed only when each applicable
-check succeeds. After reboot, require quorum, all expected OSDs up/in, clean placement groups
-and `wolfssl-fips-pve-verify --ceph-cluster` before the next member.
+check succeeds. After reboot, require quorum, all expected OSDs up/in, the node's managers and
+metadata servers listed by `ceph -s`, clean placement groups and successful verification with
+`wolfssl-fips-pve-verify --ceph-cluster` before rebooting the next member.
 
 For a full shutdown, follow Proxmox's
 [Ceph HCI shutdown sequence](https://pve.proxmox.com/pve-docs/chapter-pveceph.html#pveceph_shutdown)

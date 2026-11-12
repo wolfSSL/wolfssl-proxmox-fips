@@ -234,8 +234,9 @@ fingerprint:
 ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub
 ```
 
-Then remove the node's old entry on the workstation, replacing `<node>` with the name or
-address used to connect, and reconnect. Accept the offered key only if its fingerprint matches:
+Then remove the node's old entry on the workstation, replacing `<node>` with the host name or
+address shown in the SSH client's warning, and reconnect. Accept the offered key only if its
+fingerprint matches:
 
 ```sh
 ssh-keygen -R <node>
@@ -274,9 +275,10 @@ Wait for `pve-guests` to become `active` before running the verifier. With `--lo
 verifier prompts for the root password and checks management login as well as configuration.
 Require the kernel, wolfCrypt/provider, SSH and management-login checks to pass. Before
 encrypted storage is created, expect failures for missing storage or unlock configuration and
-for guest, backup or import content enabled on installer-created storage. LUKS nodes also
-report unset encrypted container-backup staging. Resolve all other `FAIL` results before continuing. Complete the
-selected storage guide, then repeat verification and resolve those deferred failures.
+for guest or backup content enabled on installer-created storage; Ceph-prepared nodes report
+a warning for that content. LUKS nodes also report unset encrypted container-backup staging.
+Resolve all other `FAIL` results before continuing. Complete the selected storage guide, then
+repeat verification and resolve those deferred failures.
 Cluster checks follow cluster configuration.
 On Ceph-prepared nodes, the no-running-Ceph-daemon check is expected until the new Ceph cluster
 is initialized; repeat verification afterward.

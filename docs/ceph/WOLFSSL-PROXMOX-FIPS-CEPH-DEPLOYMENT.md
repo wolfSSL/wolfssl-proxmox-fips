@@ -179,8 +179,9 @@ pvesm add cephfs <cephfs-storage> --fs-name <cephfs-name> \
   --content backup,iso,vztmpl,snippets --options ms_mode=secure
 ```
 
-Include any other required mount options in the same comma-separated option list. Reboot each
-node in turn before putting data on these mounts, then verify the mounts as described in section 5.
+Include any other required mount options in the same comma-separated option list. Before
+putting data on these mounts, reboot each node in turn, waiting for `HEALTH_OK` before
+rebooting the next. Then verify the mounts as described in section 5.
 After adding a monitor later, add port 3300 to its new `mon_host` entry as well, because
 `pveceph mon create` writes the entry without a port.
 
@@ -273,9 +274,19 @@ ceph mon stat
 ```
 
 Resolve every failure and review warnings, including plaintext `local` or `local-lvm` storage
-eligibility. Require all intended OSDs `up` and `in`, all placement groups `active+clean`, and
-all intended monitors in quorum. The verifier checks provider activation, messenger policy,
-OSD encryption and relevant kernel clients; it does not prove every guest volume or backup
+eligibility. Require all intended OSDs `up` and `in`, all placement groups `active+clean`, all
+intended monitors in quorum, and all intended managers and metadata servers listed by `ceph -s`.
+`HEALTH_OK` can be reported while a standby is missing. If a daemon is missing and its unit on
+that node reports `Start request repeated too quickly`, clear the start limit and start it.
+Replace `<id>` with the daemon's name, usually the node name:
+
+```sh
+systemctl reset-failed ceph-mgr@<id>
+systemctl start ceph-mgr@<id>
+```
+
+Use `ceph-mds@<id>` for a metadata server. The verifier checks provider activation, messenger
+policy, OSD encryption and relevant kernel clients; it does not prove every guest volume or backup
 uses encrypted storage. Check those destinations before creating or importing guests.
 
 ## 6. Maintain the cluster
