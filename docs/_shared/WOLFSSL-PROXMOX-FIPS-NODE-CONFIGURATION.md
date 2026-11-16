@@ -47,6 +47,9 @@ remove the preferences to bypass the dependency constraints.
 apt list --upgradable
 ```
 
+Keep `wolfssl-fips-pve-nfs` installed on NFS clients. Quiesce guests, backup jobs
+and other export I/O before credential or service changes; reboot to establish fresh contexts.
+
 Package installation does not replace every running process. Evacuate or shut down guests
 using the cluster's normal maintenance procedure, then reboot:
 
@@ -69,9 +72,10 @@ The verifier prompts for the root password to check management login. Resolve ev
 and assess each warning before returning the node to service. Open a fresh SSH connection
 with the ECDSA or RSA key configured during Installation.
 
-Repeat the selected storage guide's unlock, placement and data checks. On a cluster,
-confirm `pvecm status` reports `Quorate: Yes`; on Ceph, also require the health and OSD
-conditions in its deployment guide before advancing to another node. A verifier pass does
+Repeat the storage guide's readiness, placement and data checks, including NFS
+[client and mount checks](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md#3-verify-access-on-every-assigned-node).
+On a cluster, confirm `pvecm status` reports `Quorate: Yes`; on Ceph, also require the health
+and OSD conditions in its deployment guide before advancing to another node. A verifier pass does
 not prove that every backup destination, restored guest or application is correctly configured.
 
 The packaged wrappers cover QEMU, PBS restore and backup clients. They survive ordinary
@@ -118,7 +122,7 @@ sshd -t && systemctl restart ssh
 ### 4.2 Provider cannot load
 
 A missing or damaged provider module can disable SSH, management login, corosync and storage
-unlock. If `/etc/wolfprovider/openssl.cnf` is missing or empty, these services start on
+access. If `/etc/wolfprovider/openssl.cnf` is missing or empty, these services start on
 OpenSSL's default provider, outside wolfCrypt and without error; `wolfssl-fips-pve-verify`
 fails. Diagnose at the console before restarting services:
 
@@ -334,7 +338,8 @@ putting the node into service. The Ready kernel remains available as a fallback.
 ## 6. Return an unused Foundation node to stock
 
 This procedure applies only to an unused standalone Foundation node on amd64, with GRUB
-and no ESPs managed by `proxmox-boot-tool`. The node must have no guests, cluster membership,
+and no ESPs managed by `proxmox-boot-tool`. It excludes nodes with `wolfssl-fips-pve-nfs`
+installed. The node must have no guests, cluster membership,
 configured Ceph or ZFS storage, LUKS devices or encrypted mappings, unlock instances, or custom
 NSS/wolfPKCS11 databases. Installer-created unencrypted root and local storage may remain.
 An installed stock Proxmox kernel with its image and initrd must be available.

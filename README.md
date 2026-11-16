@@ -2,7 +2,8 @@
 
 Deployment and maintenance guides for installing the wolfSSL integration from prebuilt APT
 packages on fresh Proxmox VE nodes. The guides cover Ceph distributed storage, local ZFS or
-LUKS storage, clustering, backup, and migration from existing Proxmox VE or VMware environments.
+LUKS storage, Kerberos-protected NFS, clustering, backup, and migration from existing Proxmox VE
+or VMware environments.
 No source build or local patching is required for the APT deployment.
 
 **Note:** The APT deployment model is still being evaluated for production readiness, and issues
@@ -19,6 +20,7 @@ Choose by where guest disks are stored. The encryption mechanism follows from th
 | --- | --- | --- |
 | Distributed storage shared across nodes | [Ceph Deployment](docs/ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md) | dm-crypt on each OSD, plus Ceph messenger and authentication cryptography |
 | Local disks on a single node | [ZFS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-ZFS.md) or [LUKS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md) | ZFS native encryption or dm-crypt beneath the filesystem |
+| NFS server or filer | [NFS Storage](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md) | Kerberos privacy in transit; filer encryption at rest |
 | Several nodes with local storage | ZFS or LUKS Deployment, then [Cluster](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md) | Per-node storage encryption, plus cluster membership and guest-movement cryptography; replication requires ZFS |
 
 Clustering nodes with local storage is shared-nothing clustering, distinct from Ceph's shared storage.
@@ -40,12 +42,13 @@ nodes can also use the LUKS package for separate local encrypted storage.
    or [return to stock packages](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#6-return-an-unused-foundation-node-to-stock)
    within the stated limits.
 3. Configure the selected storage. For Ceph, form the new all-FIPS Proxmox cluster before
-   initializing Ceph.
+   initialization. NFS supports standalone nodes and clusters; join cluster members before
+   adding shared NFS storage and meet its client-integration prerequisites.
 4. Configure and test [Backup](docs/_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md). Use
    [Node Configuration and Recovery](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md)
    for supported updates, verification and access recovery.
-5. For local-storage clusters, use the [Cluster guide](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md)
-   for migration, replication and HA requirements.
+5. For clustered deployments, use the [Cluster guide](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md)
+   for migration and HA requirements; replication applies to local ZFS storage.
 
 To bring existing guests onto a freshly deployed target, follow
 [Migration from Proxmox VE](docs/_migration/WOLFSSL-PROXMOX-FIPS-MIGRATION-PVE.md) or
@@ -64,6 +67,7 @@ or an external backup destination.
 | [Ceph Deployment](docs/ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md) | Deploy Ceph from APT packages with encrypted OSDs and secure messenger and authentication cryptography. |
 | [ZFS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-ZFS.md) | Deploy local storage with ZFS native encryption. |
 | [LUKS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md) | Deploy local storage with LUKS/dm-crypt encryption. |
+| [NFS Storage](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md) | Configure machine credentials and protected NFS storage; verify filer encryption separately. |
 | [Cluster](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md) | Create and operate a new all-FIPS cluster, including guest migration and HA requirements; replication requires ZFS. |
 | [Node Configuration and Recovery](docs/_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md) | Apply supported updates, change an unused Foundation node to licensed v5 or stock packages, verify activation, and recover access and guest startup. |
 | [Backup](docs/_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md) | Configure and verify backup and restore with vzdump or Proxmox Backup Server. |

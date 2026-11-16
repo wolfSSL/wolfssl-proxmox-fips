@@ -6,8 +6,9 @@ This does not convert the source node or join a stock node to a FIPS cluster.
 ## 1. Prepare the destination
 
 Complete [Installation](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md) and the selected
-storage guide. Confirm that the destination storage is unlocked, has enough capacity, and is
-available on the node performing the restore. Use an unused destination guest ID.
+storage guide. Confirm capacity and access on the restore node, including unlock checks
+for local storage or [NFS client checks](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md#3-verify-access-on-every-assigned-node).
+Use an unused destination guest ID.
 
 The [Backup guide](../_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md) covers the storage and key settings
 used below. Backups from Proxmox Backup Server require the original client encryption key;
@@ -53,27 +54,28 @@ vzdump <source-vmid> --storage <backup-storage> --mode stop
 finishes. Shut down the source again before starting its replacement. Keep the source and
 backup until the destination has passed acceptance.
 
-## 3. Restore onto encrypted storage
+## 3. Restore onto destination storage
 
-Commands run as root on the destination. `<encrypted-storage>` is the Proxmox storage ID
+Commands run as root on the destination. `<guest-storage>` is the Proxmox storage ID
 configured by the destination's storage guide. Restore an archive by its full path:
 
 ```sh
 # Virtual machine
-qmrestore <archive> <new-vmid> --storage <encrypted-storage>
+qmrestore <archive> <new-vmid> --storage <guest-storage>
 
 # Container
-pct restore <new-vmid> <archive> --storage <encrypted-storage>
+pct restore <new-vmid> <archive> --storage <guest-storage>
 ```
 
 For PBS, register the datastore with the source encryption key using the Backup guide.
-Select the snapshot in the Proxmox restore interface and explicitly select the encrypted
+Select the snapshot in the Proxmox restore interface and explicitly select the intended
 destination storage. The same destination requirement applies to archives copied to the
 node: their location does not determine where restored disks are written.
 
 Proxmox Backup Server restores need no `OPENSSL_CONF` prefix or manual wrapper: the APT
 packages wrap `pbs-restore`. Restoring a vzdump VMA archive runs `vma` on OpenSSL's default
-provider, outside wolfCrypt; the destination storage encrypts the restored disks.
+provider, outside wolfCrypt. Verify at-rest encryption with the destination guide; NFS requires
+filer encryption.
 
 A restore retains guest settings. Remove SPICE display, audio and USB redirection settings
 before starting an affected VM; the packaged verifier lists incompatible settings and their
