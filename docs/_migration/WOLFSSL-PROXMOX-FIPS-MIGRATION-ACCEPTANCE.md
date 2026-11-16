@@ -6,7 +6,7 @@ destination node unless labeled otherwise.
 
 ## 1. Check the destination
 
-Confirm that every persistent guest volume is on the intended encrypted storage:
+Confirm every persistent guest volume has the intended storage and at-rest protection:
 
 ```sh
 # Virtual machine
@@ -33,6 +33,8 @@ Resolve all failures. For ZFS, check the dataset's encryption root and loaded ke
 mapping and mounted filesystem using the
 [LUKS guide](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md). For Ceph, check
 encrypted OSDs and secure messaging using the [Ceph guide](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md).
+For [NFS](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md), verify client credentials,
+the protected mount and filer encryption separately.
 
 ## 2. Verify the guest
 
@@ -58,10 +60,10 @@ not a checksum captured after the backup was taken.
 
 ## 3. Confirm recovery and backup
 
-In a maintenance window, confirm the target's storage unlock and guest startup after a node
+In a maintenance window, confirm the target's storage access and guest startup after a node
 reboot, following the selected deployment guide. For a cluster, use the
 [Cluster maintenance procedure](../storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md) so quorum,
-HA and Ceph availability are preserved. Complete the selected guide's unlock checks before starting guests.
+HA and Ceph availability are preserved. Complete the selected guide's storage checks before starting guests.
 
 Repeat the guest data check after restart. Test a backup and restore of the migrated guest
 using the [Backup guide](../_shared/WOLFSSL-PROXMOX-FIPS-BACKUP.md), keeping restored test

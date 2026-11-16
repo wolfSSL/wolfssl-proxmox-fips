@@ -8,7 +8,8 @@ build or local patching is required.
 may remain. Send feedback and relevant diagnostic logs to `support@wolfssl.com`. Remove
 credentials, private keys and other sensitive information before sharing.
 
-Complete this guide on each node, then configure its storage with the ZFS, LUKS or Ceph guide.
+Complete this guide on each node, then configure its storage with the ZFS, LUKS, Ceph or
+[NFS guide](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md).
 For a cluster, read [Cluster planning](../storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md)
 before installing the first node.
 
@@ -204,11 +205,16 @@ metapackage brings in the shared kernel, provider, service configuration and wra
 | LUKS data volumes | `apt install --allow-downgrades wolfssl-fips-pve-luks` |
 | Ceph Tentacle | `apt install --allow-downgrades wolfssl-fips-pve-ceph` |
 | Ceph plus separate local LUKS volumes | `apt install --allow-downgrades wolfssl-fips-pve-ceph wolfssl-fips-pve-luks` |
-| No encrypted data storage yet | `apt install --allow-downgrades proxmox-kernel-wolfcrng wolfssl-fips-pve-config wolfssl-fips-pve-wrappers` |
+| Kerberos NFS | `apt install --allow-downgrades wolfssl-fips-pve-nfs` |
+| Common packages only | `apt install --allow-downgrades proxmox-kernel-wolfcrng wolfssl-fips-pve-config wolfssl-fips-pve-wrappers` |
 
 For Ceph, first complete the stock Tentacle package preparation in the
 [Ceph guide](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md). Do not install the Ceph and
 ZFS metapackages together. For ZFS, confirm both pin packages were installed in section 3.
+
+For NFS, the metapackage includes the common integration, Kerberos packages and
+`rpc.gssd` configuration. After reboot, prepare credentials and storage using the
+[NFS guide](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md#1-prepare-every-client).
 
 On every node, also install the compatible backup clients and SSH packages:
 
@@ -285,16 +291,16 @@ is initialized; repeat verification afterward.
 
 ## 7. Configure storage and operations
 
-The first reboot activates the selected profile. Continue with its guide to create encrypted
-storage and configure unlock or cluster services:
+The first reboot activates the selected profile. Continue with its storage guide:
 
 - [ZFS native encryption](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-ZFS.md).
 - [LUKS/dm-crypt](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md).
 - [Ceph](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md), after forming the new cluster.
+- [NFS](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md), for transport protection; verify filer encryption separately.
 
 The installer-created `local`, `local-lvm` or `local-zfs` storage is not made encrypted by
-installing the common packages. Keep guest data and backups on the encrypted destinations
-configured in the selected guide.
+installing the common packages. Verify guest and backup protection using the selected
+storage guide; NFS transport protection does not encrypt the filer disks.
 
 When creating or importing VMs, use standard VGA/noVNC or another supported display.
 SPICE/QXL display, SPICE audio and SPICE USB redirection are unsupported; the verifier
@@ -306,4 +312,5 @@ for subsequent updates and access recovery. Before configuring storage or a clus
 [licensed-v5 channel change](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
 if the repository choice needs correcting. Its
 [stock-return procedure](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#6-return-an-unused-foundation-node-to-stock)
-is limited to unused standalone Foundation nodes with a supported GRUB boot configuration.
+is limited to unused standalone Foundation nodes with a supported GRUB boot configuration
+and excludes NFS profile nodes.
