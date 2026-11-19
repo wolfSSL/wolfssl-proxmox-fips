@@ -67,6 +67,11 @@ This evaluation uses the public FIPS Ready channel on a fresh Proxmox VE 9.2 nod
 not qualify the licensed channel, a Ready-to-v5 conversion or production support. The root
 filesystem remains unencrypted; encrypted Ceph OSDs do not encrypt the root or monitor store.
 
+Before starting, obtain from wolfSSL a FIPS Ready evaluation package set compatible with
+the installed Proxmox release, including the corrected checker described in section 5 and
+the required rebuilt Proxmox dependencies. If APT cannot resolve the package dependencies,
+obtain a compatible wolfSSL package set before proceeding.
+
 Select ZFS RAID1 on two boot disks in the Proxmox installer, with separate devices reserved
 for Ceph OSDs. Use UEFI with the signed shim/GRUB Secure Boot path from section 4. Keep
 console access available and both boot disks' EFI System Partitions synchronized using
