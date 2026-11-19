@@ -90,6 +90,7 @@ manifest digest. Do not add packages to an older bundle or reuse its manifest
 digest for a changed selection.
 
 ```sh
+set -euo pipefail
 bundle=/root/<evaluation-bundle>
 cd "$bundle"
 checksums_sha256='<authenticated-sha256sums-sha256>'
