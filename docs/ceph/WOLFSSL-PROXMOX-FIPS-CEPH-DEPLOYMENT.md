@@ -26,17 +26,28 @@ Confirm that `ceph --version` reports Tentacle 20.2.5 before continuing. Do not 
 yet. Squid is outside this deployment's scope. Do not run `pveceph install` again after
 configuring the wolfSSL repository; select the Ceph metapackage during Foundation instead.
 
-The Ceph and ZFS metapackages conflict. Select Ceph for these nodes; encrypted ZFS on the same
-node is outside this guide's wolfCrypt storage coverage. Separate local LUKS volumes are
-supported with the additional [LUKS metapackage and configuration](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md).
+The Ceph and wolfZFS metapackages conflict. Select Ceph for these nodes; encrypted wolfZFS
+guest storage on the same node is outside this guide's coverage. For public FIPS Ready nodes
+with an unencrypted ZFS RAID1 root, follow Foundation's
+[boot-mirror evaluation](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md#evaluate-a-zfs-boot-mirror-on-a-ceph-node).
+Retain stock ZFS for boot; use separate devices for the encrypted OSDs.
+Separate local LUKS volumes are supported with the additional
+[LUKS metapackage and configuration](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md).
 
 ## 2. Install and activate the wolfSSL integration
 
 Complete [Foundation](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md) on every node. Select
 `Components: main ceph-tentacle` in the wolfSSL repository and `wolfssl-fips-pve-ceph` in
 Foundation's package installation. Include `wolfssl-fips-pve-luks` in that transaction if the
-node also needs separate local LUKS volumes. Complete SSH preparation, signing-key enrollment
-where required, reboot and verification before continuing.
+node also needs separate local LUKS volumes. The Ceph metapackage already supplies the
+cryptsetup integration for encrypted OSDs; OSD encryption alone does not require the LUKS
+metapackage. Complete SSH preparation, signing-key enrollment where required, reboot and
+verification before continuing.
+
+If install media retains the LUKS metapackage without standalone local volumes, complete
+Foundation's [checker prerequisite](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md#5-install-the-packages).
+Check 23 then skips the absent standalone configuration; this does not skip Ceph OSD
+encryption verification.
 
 Use the same channel on all nodes. FIPS Ready is not a FIPS-validated module; the licensed
 channel's applicability remains subject to the module Security Policy as described in Foundation.
@@ -128,6 +139,19 @@ Create each pool with `--pg_autoscale_mode on`, or set it afterward with
 holding little data reports `HEALTH_WARN` for too many placement groups, and section 5's
 verifier fails its Ceph health check. All OSDs backing those pools must be encrypted.
 Encryption does not follow a guest moved to another, unencrypted storage.
+
+For the Ready boot-mirror evaluation, prevent guest disks and backups from being placed on
+the unencrypted root pool. Disable the installer-created `local-zfs` storage and restrict
+`local` to installation images and templates before creating guests:
+
+```sh
+pvesm set local-zfs --disable 1
+pvesm set local --content iso,vztmpl
+```
+
+Restrict any other unencrypted guest or backup destination by its actual storage ID. Keep
+all guest volumes on encrypted Ceph storage, including any EFI or TPM-state volumes used
+by the guest. These settings do not encrypt the root filesystem.
 
 For CephFS, first create the metadata servers required by the planned topology using the
 [Proxmox MDS instructions](https://pve.proxmox.com/pve-docs/chapter-pveceph.html#pveceph_fs_mds).

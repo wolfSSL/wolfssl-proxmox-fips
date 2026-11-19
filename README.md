@@ -27,9 +27,17 @@ paths.
 
 ## Reading order
 
-Choose the storage architecture before installing packages. Ceph and wolfZFS use different
-kernel-module profiles and their deployment metapackages cannot be installed together. Ceph
-nodes can also use the LUKS package for separate local encrypted storage.
+Choose the storage profile by where encrypted guest data is stored. The
+`wolfssl-fips-pve-ceph` and `wolfssl-fips-pve-zfs` metapackages conflict; the latter supplies
+wolfZFS for encrypted ZFS guest storage. A ZFS boot filesystem is a separate choice; see
+[Foundation requirements](docs/_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md#1-requirements-and-repository-choice)
+for the covered root layouts. Ceph OSD encryption does not require the LUKS metapackage;
+add it only for separate local encrypted volumes.
+
+The public FIPS Ready channel also has an
+[evaluation path for unencrypted ZFS boot mirrors on Ceph nodes](docs/_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md#evaluate-a-zfs-boot-mirror-on-a-ceph-node).
+This path retains stock ZFS for boot and selects Ceph for encrypted guest storage; it does
+not extend the encrypted-ZFS profile, licensed-channel qualification or production support.
 
 1. For a multi-node deployment, read [Cluster planning](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-CLUSTER.md#1-plan-the-cluster)
    first. For Ceph, complete its node-preparation steps before the wolfSSL installation.

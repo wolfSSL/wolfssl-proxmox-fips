@@ -20,11 +20,14 @@ apt update
 apt install wolfssl-fips-pve-apt
 ```
 
-On encrypted ZFS nodes, replace the install command above with:
+On nodes using the encrypted wolfZFS guest-storage profile, replace the install command above with:
 
 ```sh
 apt install wolfssl-fips-pve-apt wolfssl-fips-pve-apt-zfs
 ```
+
+The Ready Ceph evaluation with an unencrypted ZFS boot mirror uses only the general
+preference package. Do not add the wolfZFS preference merely because the root is on ZFS.
 
 Then review and apply the upgrade:
 
@@ -74,6 +77,11 @@ confirm `pvecm status` reports `Quorate: Yes`; on Ceph, also require the health 
 conditions in its deployment guide before advancing to another node. A verifier pass does
 not prove that every backup destination, restored guest or application is correctly configured.
 
+For the Ready ZFS boot-mirror evaluation, repeat Foundation's
+[root, module and ESP checks](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md#6-reboot-and-verify)
+after updates and reboot. Require the intended kernel on both configured ESPs and the
+matching stock ZFS module before returning the node to service.
+
 The packaged wrappers cover QEMU, PBS restore and backup clients. They survive ordinary
 package updates through dpkg diversions; do not recreate the old manual wrappers or package
 holds. If a VM was started while wrappers were disabled during recovery, shut it down fully
@@ -86,6 +94,14 @@ matching wolfCrypt module and, on encrypted ZFS nodes, its wolfZFS modules for a
 Proxmox retains that kernel. Review `apt autoremove` proposals as a set: kernel and matching
 modules must be removed together. Do not remove the running kernel or the last working
 fallback.
+
+For a ZFS root, retained boot kernels must also be able to import the root pool. Preserve
+that compatibility when selecting ZFS versions or enabling pool features. Follow
+[Proxmox boot management](https://pve.proxmox.com/pve-docs/chapter-sysadmin.html#sysboot_proxmox_boot_tool)
+for synchronized ESPs, and the
+[bootable-disk replacement procedure](https://pve.proxmox.com/pve-docs/chapter-sysadmin.html#sysadmin_zfs_change_failed_dev)
+when replacing a failed mirror member. Pool resilvering and a bootable replacement ESP
+are separate recovery requirements.
 
 To boot an installed previous wolfSSL kernel once, replace `<kernel-version>` with its full
 version from the installed package list:
@@ -245,6 +261,34 @@ pct list
 
 Confirm the guests are stopped before rebooting. After a successful boot, repeat section 2
 and the storage guide's unlock checks.
+
+### 4.4 Recover a ZFS boot mirror
+
+For the Ready Ceph evaluation with an unencrypted ZFS root, follow Proxmox's
+[bootable-disk replacement procedure](https://pve.proxmox.com/pve-docs/chapter-sysadmin.html#sysadmin_zfs_change_failed_dev)
+to restore the mirror and its bootloader. Confirm the device identities before replacement.
+Rebuild or synchronize the replacement ESP as required, and verify both ESPs with
+`proxmox-boot-tool status`. Resilvering the pool does not make an ESP bootable.
+
+After a missing member returns or a replacement resilvers, inspect the pool:
+
+```sh
+zpool status -P rpool
+```
+
+Require the intended members ONLINE, a completed resilver without scan errors and no known
+data errors. Verify guest data and Ceph health using the Ceph and Backup guides. In a planned
+redundancy test with current backups, confirm each boot disk can boot independently, and
+that the recovered member alone can read test data written while it was absent.
+
+Stock Proxmox/OpenZFS can report import-time checksum faults on a returning mirror member
+before its missing-write history is loaded. This behavior was also reproduced without the
+wolfSSL stack: the current member supplied valid data and the recovered member retained
+the writes it had missed. A nonzero returning-member checksum counter alone therefore
+does not establish recovery failure. Assess it together with resilver and data-readback
+results against that stock behavior.
+Retain the status, counters and event evidence. Do not clear counters as a recovery check,
+and investigate failures or checksum reports not explained by that stock behavior.
 
 ## 5. Change a Ready Foundation node to licensed v5
 

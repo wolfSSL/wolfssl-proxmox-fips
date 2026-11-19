@@ -21,7 +21,9 @@ covers the base installation. Run commands as root on the node unless labeled ot
 
 Have console access throughout installation and the first reboot. Use separate data storage
 for encrypted guest disks. An ext4/LVM root keeps storage-encryption recovery separate from
-booting the host. Encrypted root installations are outside this guide's scope.
+booting the host. Public FIPS Ready Ceph nodes can instead follow the
+[unencrypted ZFS boot-mirror evaluation](#evaluate-a-zfs-boot-mirror-on-a-ceph-node) below.
+Encrypted root installations are outside this guide's scope.
 
 This edition covers fresh nodes and new clusters made entirely of wolfSSL-configured nodes.
 Converting an existing production node or manual-build installation in place and mixing stock
@@ -58,6 +60,37 @@ systems are unchanged. Virtual TPM cryptography remains outside the wolfCrypt va
 boundary.
 Repository signature verification also has exceptions: licensed APT and `pveam` on both
 channels use Sequoia (`sqv`), outside wolfCrypt.
+
+### Evaluate a ZFS boot mirror on a Ceph node
+
+This evaluation uses the public FIPS Ready channel on a fresh Proxmox VE 9.2 node. It does
+not qualify the licensed channel, a Ready-to-v5 conversion or production support. The root
+filesystem remains unencrypted; encrypted Ceph OSDs do not encrypt the root or monitor store.
+
+Select ZFS RAID1 on two boot disks in the Proxmox installer, with separate devices reserved
+for Ceph OSDs. Use UEFI with the signed shim/GRUB Secure Boot path from section 4. Keep
+console access available and both boot disks' EFI System Partitions synchronized using
+[Proxmox boot management](https://pve.proxmox.com/pve-docs/chapter-sysadmin.html#sysboot_proxmox_boot_tool).
+
+Select the Ceph profile in section 5. The wolfSSL kernel supplies stock ZFS modules for the
+boot pool. Do not install `wolfssl-fips-pve-zfs`, `wolfzfs-kmod` or
+`wolfssl-fips-pve-apt-zfs` for this layout. Those packages select encrypted wolfZFS guest
+storage. On fresh media, select Ceph alone unless separate local LUKS volumes are needed.
+The LUKS metapackage may remain installed if the install media includes it; it is not
+required for encrypted Ceph OSDs and does not encrypt the root. This retained-LUKS case
+requires the checker correction described in section 5. Configure standalone LUKS volumes
+only when separate local encrypted storage is needed.
+
+An ISO builder should select the boot filesystem independently of the encrypted guest-storage
+profile: allow installer ZFS RAID1 with the Ceph profile, while retaining the guard against
+installing the conflicting Ceph and wolfZFS guest-storage metapackages together. The reference
+installation uses official Proxmox media followed by APT installation; a custom ISO needs
+its own installation and boot verification.
+
+Keep guest disks and backups on the encrypted destinations selected by the Ceph and Backup
+guides. Disable the installer's unencrypted `local-zfs` guest destination as described in
+the Ceph guide. The limited stock-return helper does not cover a root mirror with managed
+ESPs; return a configured node to stock by reinstallation.
 
 ## 2. Prepare SSH access
 
@@ -131,7 +164,7 @@ apt install wolfssl-fips-pve-apt
 apt update
 ```
 
-**For encrypted ZFS**, use this install command instead of the single-package command above:
+**For encrypted ZFS guest storage**, use this install command instead of the single-package command above:
 
 ```sh
 apt install wolfssl-fips-pve-apt wolfssl-fips-pve-apt-zfs
@@ -200,7 +233,7 @@ metapackage brings in the shared kernel, provider, service configuration and wra
 
 | Storage profile | Install command |
 | --- | --- |
-| Encrypted ZFS | `apt install --allow-downgrades wolfssl-fips-pve-zfs` |
+| Encrypted ZFS guest storage | `apt install --allow-downgrades wolfssl-fips-pve-zfs` |
 | LUKS data volumes | `apt install --allow-downgrades wolfssl-fips-pve-luks` |
 | Ceph Tentacle | `apt install --allow-downgrades wolfssl-fips-pve-ceph` |
 | Ceph plus separate local LUKS volumes | `apt install --allow-downgrades wolfssl-fips-pve-ceph wolfssl-fips-pve-luks` |
@@ -208,7 +241,19 @@ metapackage brings in the shared kernel, provider, service configuration and wra
 
 For Ceph, first complete the stock Tentacle package preparation in the
 [Ceph guide](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md). Do not install the Ceph and
-ZFS metapackages together. For ZFS, confirm both pin packages were installed in section 3.
+wolfZFS metapackages together. The wolfZFS metapackage and the additional ZFS pin are for
+encrypted ZFS guest storage. They are not required merely because ZFS packages are present.
+For encrypted ZFS guest storage, confirm both pin packages were installed in section 3.
+
+For the Ready ZFS boot-mirror evaluation, use the Ceph row and only the general preference
+package. Retaining an already installed LUKS metapackage does not select wolfZFS. If no
+standalone local LUKS volumes are configured, use a `wolfssl-fips-pve-config` release whose
+checker distinguishes Ceph-managed OSDs from standalone local volumes. Check 23 must report
+that standalone checks are skipped because none are configured; check 24 must still verify
+the encrypted Ceph OSDs after cluster creation. If the installed checker instead demands
+local crypttab volumes, unlock units, mounts or backup staging, obtain the corrected package
+from wolfSSL before using the retained-LUKS case. Do not ignore these failures or create
+an unrelated local volume to satisfy them.
 
 On every node, also install the compatible backup clients and SSH packages:
 
@@ -282,6 +327,30 @@ repeat verification and resolve those deferred failures.
 Cluster checks follow cluster configuration.
 On Ceph-prepared nodes, the no-running-Ceph-daemon check is expected until the new Ceph cluster
 is initialized; repeat verification afterward.
+
+For the Ready ZFS boot-mirror evaluation, also check the installer-created root pool and
+boot configuration after this reboot:
+
+```sh
+findmnt --mountpoint / -o SOURCE,FSTYPE
+zpool status -P rpool
+zfs get -H -o name,property,value encryption rpool/ROOT/pve-1
+zfs version
+modinfo -F filename zfs
+modinfo -F depends zfs
+proxmox-boot-tool status
+```
+
+Require an unencrypted ZFS root, an ONLINE mirror with both intended leaves available and
+no known data errors. Record the device READ/WRITE/CKSUM counters and any pool warning;
+use the [mirror-recovery checks](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#44-recover-a-zfs-boot-mirror)
+to assess a returning member. Require matching OpenZFS userspace and kernel releases, and
+a stock module in the running kernel's `zfs/` directory with dependency `spl`. Both ESPs
+must list GRUB and the intended `+wolfcrng` kernel. An ONLINE mirror alone does not establish
+that both disks are bootable; complete the site's boot-disk failure test before relying
+on redundancy. Use the
+[Proxmox bootable-disk replacement procedure](https://pve.proxmox.com/pve-docs/chapter-sysadmin.html#sysadmin_zfs_change_failed_dev)
+for pool replacement and ESP recovery.
 
 ## 7. Configure storage and operations
 
