@@ -25,6 +25,13 @@ Clustering nodes with local storage is shared-nothing clustering, distinct from 
 dm-crypt is used by both the local LUKS deployment and Ceph's OSDs, but they are separate deployment
 paths.
 
+For experimental encrypted host root on a Ceph node, start with
+[Experimental encrypted ZFS root](docs/_foundation/WOLFSSL-PROXMOX-FIPS-ENCRYPTED-ZFS-ROOT.md).
+This separate evaluation path requires temporary provisioning media, a new final
+boot mirror, external key custody and an authenticated experimental package
+delivery. It does not change the ordinary guest-storage choices or qualified
+root layouts below.
+
 ## Reading order
 
 Choose the storage profile by where encrypted guest data is stored. The
@@ -69,6 +76,7 @@ or an external backup destination.
 | Guide | Purpose |
 | --- | --- |
 | [Foundation](docs/_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md) | Configure repository preferences and signing-key trust, install the shared packages and selected storage profile, then reboot and verify. |
+| [Experimental encrypted ZFS root](docs/_foundation/WOLFSSL-PROXMOX-FIPS-ENCRYPTED-ZFS-ROOT.md) | Evaluate a fresh encrypted host-root mirror with Ceph; uses a separate provisioning and maintenance procedure. |
 | [Ceph Deployment](docs/ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md) | Deploy Ceph from APT packages with encrypted OSDs and secure messenger and authentication cryptography. |
 | [ZFS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-ZFS.md) | Deploy local storage with ZFS native encryption. |
 | [LUKS Deployment](docs/storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md) | Deploy local storage with LUKS/dm-crypt encryption. |

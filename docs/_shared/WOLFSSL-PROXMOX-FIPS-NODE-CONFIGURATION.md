@@ -6,6 +6,13 @@ standalone nodes immediately after Installation, before guest, storage or cluste
 Commands run as root on the Proxmox node unless labeled otherwise. Keep console access
 available during updates and recovery.
 
+An active experimental encrypted-ZFS-root node uses the separate
+[root maintenance and recovery procedure](../_foundation/WOLFSSL-PROXMOX-FIPS-ENCRYPTED-ZFS-ROOT.md#11-maintain-an-accepted-encrypted-root-node).
+Require a healthy mirror and both ESPs, and explicitly update its root cohort
+after APT, including common-config-only upgrades. The manual kernel-pin and
+unused-Foundation stock-return procedures below do not apply to active encrypted
+root; do not remove its protected integration package or disable root policy.
+
 ## 1. Update the installed packages
 
 Plan a maintenance window and confirm that backups and encryption keys are available.

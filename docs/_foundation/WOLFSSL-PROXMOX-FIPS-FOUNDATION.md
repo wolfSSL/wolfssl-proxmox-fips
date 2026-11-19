@@ -25,6 +25,13 @@ booting the host. Public FIPS Ready Ceph nodes can instead follow the
 [unencrypted ZFS boot-mirror evaluation](#evaluate-a-zfs-boot-mirror-on-a-ceph-node) below.
 Encrypted root installations are outside this guide's scope.
 
+The separate [experimental encrypted-ZFS-root procedure](WOLFSSL-PROXMOX-FIPS-ENCRYPTED-ZFS-ROOT.md)
+evaluates a new encrypted host-root mirror with Ceph using temporary provisioning
+media and an authenticated evaluation package delivery. Start there before
+selecting packages; it reuses the shared preparation below and supplies its own
+root provisioning and maintenance steps. The stock, unencrypted boot-mirror
+evaluation below remains a separate procedure.
+
 This edition covers fresh nodes and new clusters made entirely of wolfSSL-configured nodes.
 Converting an existing production node or manual-build installation in place and mixing stock
 and wolfSSL nodes in one cluster are unsupported. Configured nodes return to stock Proxmox by
