@@ -75,11 +75,11 @@ console access available and both boot disks' EFI System Partitions synchronized
 Select the Ceph profile in section 5. The wolfSSL kernel supplies stock ZFS modules for the
 boot pool. Do not install `wolfssl-fips-pve-zfs`, `wolfzfs-kmod` or
 `wolfssl-fips-pve-apt-zfs` for this layout. Those packages select encrypted wolfZFS guest
-storage. On fresh media, select Ceph alone unless separate local LUKS volumes are needed.
-The LUKS metapackage may remain installed if the install media includes it; it is not
-required for encrypted Ceph OSDs and does not encrypt the root. This retained-LUKS case
-requires the checker correction described in section 5. Configure standalone LUKS volumes
-only when separate local encrypted storage is needed.
+storage. Ceph alone provides OSD encryption. To reproduce an install-media selection that
+also includes the LUKS metapackage, use the Ceph-plus-LUKS row in section 5. The additional
+metapackage does not encrypt the root or require creating standalone local volumes;
+this retained-LUKS case requires the checker correction described there. Configure
+standalone LUKS volumes only when separate local encrypted storage is needed.
 
 An ISO builder should select the boot filesystem independently of the encrypted guest-storage
 profile: allow installer ZFS RAID1 with the Ceph profile, while retaining the guard against
@@ -236,7 +236,7 @@ metapackage brings in the shared kernel, provider, service configuration and wra
 | Encrypted ZFS guest storage | `apt install --allow-downgrades wolfssl-fips-pve-zfs` |
 | LUKS data volumes | `apt install --allow-downgrades wolfssl-fips-pve-luks` |
 | Ceph Tentacle | `apt install --allow-downgrades wolfssl-fips-pve-ceph` |
-| Ceph plus separate local LUKS volumes | `apt install --allow-downgrades wolfssl-fips-pve-ceph wolfssl-fips-pve-luks` |
+| Ceph plus LUKS metapackage | `apt install --allow-downgrades wolfssl-fips-pve-ceph wolfssl-fips-pve-luks` |
 | No encrypted data storage yet | `apt install --allow-downgrades proxmox-kernel-wolfcrng wolfssl-fips-pve-config wolfssl-fips-pve-wrappers` |
 
 For Ceph, first complete the stock Tentacle package preparation in the
@@ -245,10 +245,12 @@ wolfZFS metapackages together. The wolfZFS metapackage and the additional ZFS pi
 encrypted ZFS guest storage. They are not required merely because ZFS packages are present.
 For encrypted ZFS guest storage, confirm both pin packages were installed in section 3.
 
-For the Ready ZFS boot-mirror evaluation, use the Ceph row and only the general preference
-package. Retaining an already installed LUKS metapackage does not select wolfZFS. If no
-standalone local LUKS volumes are configured, use a `wolfssl-fips-pve-config` release whose
-checker distinguishes Ceph-managed OSDs from standalone local volumes. Check 23 must report
+For the Ready ZFS boot-mirror evaluation, use the Ceph row, or the Ceph-plus-LUKS row to
+reproduce media that includes both metapackages. Use only the general preference package;
+the LUKS metapackage does not select wolfZFS. Configure separate local LUKS volumes with
+the LUKS guide only if they are needed. If none are configured, use a
+`wolfssl-fips-pve-config` release whose checker distinguishes Ceph-managed OSDs from
+standalone local volumes. Check 23 must report
 that standalone checks are skipped because none are configured; check 24 must still verify
 the encrypted Ceph OSDs after cluster creation. If the installed checker instead demands
 local crypttab volumes, unlock units, mounts or backup staging, obtain the corrected package
