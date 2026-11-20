@@ -227,7 +227,10 @@ test "$source_vz" != "$source_root"
 lsblk -d -b -o PATH,SIZE,SERIAL,MODEL "$target_a" "$target_b" "$osd"
 zpool status -P "$source_pool"
 test ! -e "$target_root"
-! zpool list -H -o name | grep -Fx "$target_pool"
+pool_names=$(zpool list -H -o name)
+while IFS= read -r pool_name; do
+  test "$pool_name" != "$target_pool"
+done <<<"$pool_names"
 install -d -m 0700 /root/root-provisioning
 python3 - "$target_a" "$target_b" "$osd" <<'PY'
 import json,subprocess,sys
@@ -384,7 +387,10 @@ target_pool=rootpool
 target_root=/mnt/new-zfs-root
 wolfssl-fips-zfs-root-prepare --check </dev/null
 test ! -e "$target_root"
-! zpool list -H -o name | grep -Fx "$target_pool"
+pool_names=$(zpool list -H -o name)
+while IFS= read -r pool_name; do
+  test "$pool_name" != "$target_pool"
+done <<<"$pool_names"
 install -d -m 0700 "$target_root"
 zpool create -o ashift=12 -o autotrim=on -o cachefile=none \
   -O encryption=aes-256-gcm -O keyformat=hex \
@@ -454,12 +460,27 @@ test -z "$(find -L /etc/pve/qemu-server /etc/pve/lxc -maxdepth 1 -name '*.conf' 
 pvesm set local-zfs --disable 1
 pvesh get /storage/local-zfs --output-format json
 systemctl stop apt-daily.timer apt-daily-upgrade.timer
-! pgrep -x 'apt|apt-get|dpkg|unattended-upgr'
+if pgrep -x 'apt|apt-get|dpkg|unattended-upgr'; then
+  printf 'A package transaction is active; wait for it to finish.\n' >&2
+  exit 1
+else
+  package_query_status=$?
+  if test "$package_query_status" -ne 1; then
+    printf 'Package transaction check failed (pgrep exit %s).\n' "$package_query_status" >&2
+    exit "$package_query_status"
+  fi
+fi
 for unit in pveproxy pvedaemon pvestatd pvescheduler pve-cluster; do
   systemctl stop "$unit"
 done
 test "$(systemctl is-active pve-cluster || true)" = inactive
-! findmnt -n --mountpoint /etc/pve
+if mountpoint -q /etc/pve; then
+  printf '/etc/pve is still mounted; inspect the stopped cluster service.\n' >&2
+  exit 1
+else
+  mount_query_status=$?
+  test "$mount_query_status" -eq 32
+fi
 ```
 
 Open a separate fresh strict-ECDSA SSH connection from management now, using the
@@ -475,7 +496,10 @@ test "$(findmnt -n -o SOURCE --target "$target_root")" = "$target_pool/ROOT/pve-
 test "$(findmnt -n -o SOURCE --target "$target_root/var/lib/vz")" = "$target_pool/var-lib-vz"
 findmnt -rn -t zfs -o SOURCE,TARGET
 snapshot=root-provision-copy
-! zfs list -H -t snapshot -o name | grep -F "@$snapshot"
+snapshot_names=$(zfs list -H -t snapshot -o name)
+while IFS= read -r snapshot_name; do
+  test "${snapshot_name##*@}" != "$snapshot"
+done <<<"$snapshot_names"
 sync
 zfs snapshot "$source_root@$snapshot" "$source_vz@$snapshot"
 rsync -aHAX --numeric-ids --one-file-system \
@@ -699,7 +723,10 @@ sync
 zfs unmount "$target_pool/var-lib-vz"
 zfs unmount "$target_pool/ROOT/pve-1"
 zpool export "$target_pool"
-! zpool list -H -o name | grep -Fx "$target_pool"
+pool_names=$(zpool list -H -o name)
+while IFS= read -r pool_name; do
+  test "$pool_name" != "$target_pool"
+done <<<"$pool_names"
 poweroff
 ```
 
