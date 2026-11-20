@@ -34,6 +34,13 @@ Retain stock ZFS for boot; use separate devices for the encrypted OSDs.
 Separate local LUKS volumes are supported with the additional
 [LUKS metapackage and configuration](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md).
 
+For the separate [experimental encrypted host-root path](../_foundation/WOLFSSL-PROXMOX-FIPS-ENCRYPTED-ZFS-ROOT.md),
+complete this section's stock Ceph preparation first, then follow that guide's
+shared Foundation preparation and experimental package selection. Finish its
+actual root-boot checks before returning here for cluster/Ceph initialization.
+That evaluation path uses the root integration and compatible wolfZFS modules;
+the encrypted guest-ZFS metapackage remains conflicting.
+
 ## 2. Install and activate the wolfSSL integration
 
 Complete [Foundation](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md) on every node. Select
