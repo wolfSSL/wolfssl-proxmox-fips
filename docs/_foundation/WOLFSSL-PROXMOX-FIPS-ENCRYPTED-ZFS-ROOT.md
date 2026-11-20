@@ -143,7 +143,8 @@ selected=("${evaluation_packages[@]}"
 )
 apt-get -s install --allow-downgrades "${selected[@]}"
 apt-get install --allow-downgrades "${selected[@]}"
-test -z "$(dpkg --audit)"
+package_audit=$(dpkg --audit)
+test -z "$package_audit"
 grep -Fx ENABLED=no /etc/wolfssl-fips/zfs-root.conf
 if /usr/lib/wolfssl-fips-zfs-root/update-cohort --probe; then
   probe_status=0
@@ -211,7 +212,8 @@ set -euo pipefail
 set +x
 ulimit -c 0
 sysctl -w kernel.core_pattern=core.disabled fs.suid_dumpable=0
-test -z "$(swapon --noheadings --show=NAME)"
+swap_devices=$(swapon --noheadings --show=NAME)
+test -z "$swap_devices"
 target_a=/dev/disk/by-id/<empty-final-boot-disk-a>
 target_b=/dev/disk/by-id/<empty-final-boot-disk-b>
 osd=/dev/disk/by-id/<dedicated-nvme-osd>
@@ -329,7 +331,8 @@ set +x
 umask 077
 ulimit -c 0
 sysctl -w kernel.core_pattern=core.disabled fs.suid_dumpable=0
-test -z "$(swapon --noheadings --show=NAME)"
+swap_devices=$(swapon --noheadings --show=NAME)
+test -z "$swap_devices"
 custody_mount=/mnt/<encrypted-primary-custody-volume>
 recovery_mount=/mnt/<encrypted-recovery-custody-volume>
 mountpoint -q "$custody_mount"
@@ -371,6 +374,7 @@ native ZFS stdin, then immediately replaces the temporary stdin keylocation with
 created while the intended stack is active; this is not a stock-pool rewrap.
 
 ```sh
+set -euo pipefail
 cat > /root/root-provisioning/create-target-pool.sh <<'SH'
 #!/bin/bash
 set -euo pipefail
@@ -380,7 +384,8 @@ unset LD_PRELOAD LD_LIBRARY_PATH OPENSSL_CONF_INCLUDE OPENSSL_TRACE
 export OPENSSL_CONF=/etc/wolfprovider/openssl.cnf
 test "$(cat /proc/sys/kernel/core_pattern)" = core.disabled
 test "$(cat /proc/sys/fs/suid_dumpable)" = 0
-test -z "$(swapon --noheadings --show=NAME)"
+swap_devices=$(swapon --noheadings --show=NAME)
+test -z "$swap_devices"
 target_a=/dev/disk/by-id/<empty-final-boot-disk-a>
 target_b=/dev/disk/by-id/<empty-final-boot-disk-b>
 target_pool=rootpool
@@ -447,6 +452,7 @@ contain public authorized keys, not a private SSH key. This temporary override a
 public file are excluded from the final-root copy.
 
 ```sh
+set -euo pipefail
 install -m 0600 /etc/pve/priv/authorized_keys \
   /root/.ssh/root-provisioning_authorized_keys
 cat > /etc/ssh/sshd_config.d/00-root-provisioning-access.conf <<'SSH'
@@ -456,7 +462,8 @@ sshd -t
 sshd -T | grep '^authorizedkeysfile '
 systemctl reload ssh
 test ! -e /etc/pve/corosync.conf
-test -z "$(find -L /etc/pve/qemu-server /etc/pve/lxc -maxdepth 1 -name '*.conf' -print)"
+guest_configs=$(find -L /etc/pve/qemu-server /etc/pve/lxc -maxdepth 1 -name '*.conf' -print)
+test -z "$guest_configs"
 pvesm set local-zfs --disable 1
 pvesh get /storage/local-zfs --output-format json
 systemctl stop apt-daily.timer apt-daily-upgrade.timer
@@ -490,6 +497,7 @@ unexpected separately mounted filesystem or populated installer container needs
 review before continuing; this path copies exactly root plus `/var/lib/vz`.
 
 ```sh
+set -euo pipefail
 test "$(findmnt -n -o SOURCE --target /)" = "$source_root"
 test "$(findmnt -n -o SOURCE --target /var/lib/vz)" = "$source_vz"
 test "$(findmnt -n -o SOURCE --target "$target_root")" = "$target_pool/ROOT/pve-1"
@@ -716,6 +724,7 @@ Back in the outer source shell, verify the source policy and clean target state,
 then export only the target pool. Failed unmount/export requires inspection.
 
 ```sh
+set -euo pipefail
 grep -Fx ENABLED=no /etc/wolfssl-fips/zfs-root.conf
 test "$(zfs get -H -o value keylocation "$target_pool")" = prompt
 test "$(zpool status -x "$target_pool")" = "pool '$target_pool' is healthy"
@@ -828,7 +837,8 @@ qualify arbitrary future kernel updates or direct boot from a saved archive.
 ```sh
 set -euo pipefail
 target_pool=rootpool
-test -z "$(dpkg --audit)"
+package_audit=$(dpkg --audit)
+test -z "$package_audit"
 test "$(zpool status -x "$target_pool")" = "pool '$target_pool' is healthy"
 /usr/lib/wolfssl-fips-pve-config/zfs-root-check
 proxmox-boot-tool status
@@ -846,7 +856,9 @@ checker path; until the recorded package inventory is refreshed, strict root
 checking correctly reports that its installed package changed.
 
 ```sh
-test -z "$(dpkg --audit)"
+set -euo pipefail
+package_audit=$(dpkg --audit)
+test -z "$package_audit"
 /usr/lib/wolfssl-fips-zfs-root/update-cohort
 /usr/lib/wolfssl-fips-pve-config/zfs-root-check
 proxmox-boot-tool status
