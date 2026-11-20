@@ -23,11 +23,14 @@ Have console access throughout installation and the first reboot. Use separate d
 for encrypted guest disks. An ext4/LVM root keeps storage-encryption recovery separate from
 booting the host. Encrypted root installations are outside this guide's scope.
 
-This edition covers fresh nodes and new clusters made entirely of wolfSSL-configured nodes.
-Converting an existing production node or manual-build installation in place and mixing stock
-and wolfSSL nodes in one cluster are unsupported. Configured nodes return to stock Proxmox by
-reinstallation. Before guest, storage or cluster configuration, an unused standalone Foundation
-node can use the limited [channel-change](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
+For existing Proxmox VE 9.2 nodes and clusters, start with
+[In-place conversion](../_migration/WOLFSSL-PROXMOX-FIPS-MIGRATION-IN-PLACE.md); it defines the
+preconditions and when to run sections 2–6 of this guide. Mixed stock/wolfSSL clusters are a
+transitional state during conversion only, not a supported steady state. Fresh deployments
+create clusters entirely from wolfSSL-configured nodes. Manual-build conversions remain outside
+this scope. Configured nodes return to stock Proxmox by reinstallation. Before guest, storage
+or cluster configuration, an unused standalone Foundation node can use the limited
+[channel-change](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#5-change-a-ready-foundation-node-to-licensed-v5)
 or [stock-return](../_shared/WOLFSSL-PROXMOX-FIPS-NODE-CONFIGURATION.md#6-return-an-unused-foundation-node-to-stock) procedure.
 Guests can be imported onto a freshly prepared target using the migration guides.
 
@@ -198,6 +201,13 @@ before proceeding if either is used.
 Install the metapackage matching the storage selected for this node. Each storage
 metapackage brings in the shared kernel, provider, service configuration and wrappers.
 
+Review each transaction before accepting it. `DOWNGRADING:` messages are expected for
+compatible rebuilds selected by the preferences. Licensed v5 removes no package; FIPS Ready
+lists `libgcrypt20` under `REMOVING:`, replacing it with `libgcrypt20-1.11.0-wolfssl`, which
+provides the same package dependency. During that replacement, dpkg reports dependency
+problems for `libgcrypt20`'s dependents. Accept no other removal. Keep the local `sshd_config`
+if prompted.
+
 | Storage profile | Install command |
 | --- | --- |
 | Encrypted ZFS | `apt install --allow-downgrades wolfssl-fips-pve-zfs` |
@@ -216,10 +226,6 @@ On every node, also install the compatible backup clients and SSH packages:
 apt install --allow-downgrades proxmox-backup-client proxmox-backup-file-restore libproxmox-backup-qemu0
 apt install --allow-downgrades openssh-server openssh-client openssh-sftp-server
 ```
-
-`DOWNGRADING:` messages are expected for compatible rebuilds selected by the preferences.
-Review the transaction; do not accept removal of the integration or the intended storage
-packages. Keep the local `sshd_config` if prompted.
 
 The packages configure the provider and service settings automatically. They also install
 compatible Proxmox authentication and supporting library packages. Do not add the old
@@ -241,6 +247,33 @@ fingerprint matches:
 ```sh
 ssh-keygen -R <node>
 ```
+
+The node's own SSH client also stops accepting Ed25519 host keys. Outgoing SSH to a host
+recorded by its Ed25519 key can report `REMOTE HOST IDENTIFICATION HAS CHANGED`. At the remote
+host's console, verify the fingerprint for the key type the client offers to record. The
+converted client can select RSA; for that type, run on the remote host:
+
+```sh
+ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub
+```
+
+For ECDSA, use the fingerprint command above. Refresh root's default `/root/.ssh/known_hosts`
+on the converted node, replacing `<host>` with the name or address in the warning and `<user>`
+with the remote account. Accept only the matching fingerprint:
+
+```sh
+ssh-keygen -R <host>
+ssh <user>@<host>
+```
+
+For a separately configured file, use its path for `<known_hosts-file>` when removing the entry:
+
+```sh
+ssh-keygen -f <known_hosts-file> -R <host>
+```
+
+Proxmox migration and replication use separate per-node RSA host-key records and need no
+refresh for this change.
 
 ## 6. Reboot and verify
 
