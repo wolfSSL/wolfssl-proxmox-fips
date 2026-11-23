@@ -12,7 +12,11 @@ blocks SCTP module loading; do not configure `knet_transport: sctp`. A QDevice u
 than this corosync OpenSSL path; use a third Proxmox node when a tie-breaking vote is required
 within this deployment model.
 
-Prepare nodes in this order:
+For an existing stock cluster, follow [In-place conversion](../_migration/WOLFSSL-PROXMOX-FIPS-MIGRATION-IN-PLACE.md)
+within its preconditions. Mixed stock/wolfSSL membership is a transitional state during that
+procedure only, not a supported steady state.
+
+For a new cluster, prepare nodes in this order:
 
 1. For Ceph nodes, install stock Tentacle first as described in [Ceph, section 1](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md#1-prepare-the-ceph-packages).
 2. Complete [Foundation](../_foundation/WOLFSSL-PROXMOX-FIPS-FOUNDATION.md), including the selected
@@ -26,8 +30,8 @@ Prepare nodes in this order:
 4. Create the Proxmox cluster, configure corosync and verify every member as below. Only then
    initialize Ceph or place production guests on the cluster.
 
-Do not join stock nodes or convert an existing stock cluster in place. A new member must
-complete the same preparation before joining. Returning a node to stock requires reinstallation.
+A new member must complete the same preparation before joining; do not add stock nodes to a
+converted cluster. Returning a node to stock requires reinstallation.
 
 Keep joining nodes free of guests. A join replaces their `/etc/pve`, including storage
 configuration and PBS encryption keys, with the cluster's copy. Before joining, retain any
