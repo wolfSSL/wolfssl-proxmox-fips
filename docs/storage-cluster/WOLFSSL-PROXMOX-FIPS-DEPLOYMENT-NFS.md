@@ -48,6 +48,16 @@ pvesm add nfs <nfs-storage> --server <server-fqdn> --export <export-path> \
 Proxmox mounts NFS automatically; no `/etc/fstab` entry is needed. Other options follow the
 [Proxmox NFS backend](https://pve.proxmox.com/pve-docs/chapter-pvesm.html#storage_nfs).
 
+NFS checks apply only to the selected export. Disable unused, unencrypted guest-storage
+destinations before creating or restoring VMs. For an unused installer-created `local-lvm`:
+
+```sh
+pvesm set local-lvm --disable 1
+```
+
+Run this only if the storage exists. Use the actual IDs for other unused, unencrypted
+destinations, including `local-zfs`.
+
 ## 3. Verify access on every assigned node
 
 ```sh
