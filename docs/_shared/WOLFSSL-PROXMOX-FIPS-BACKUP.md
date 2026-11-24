@@ -10,7 +10,8 @@ For scheduling, retention, guest consistency and backup exclusions, use the offi
 
 | Destination | Protection supplied by this deployment |
 | --- | --- |
-| File-level storage (`vzdump` VMA or tar archive) | Encryption of the destination filesystem or block device. The archive itself is not encrypted by `vzdump`. Copying it outside that storage removes this protection. |
+| Local file-level storage (`vzdump` VMA or tar archive) | Encryption of the destination filesystem or block device. The archive itself is not encrypted by `vzdump`. Copying it outside that storage removes this protection. |
+| NFS file archives | `krb5p` protects transport; archive encryption at rest depends on the filer. |
 | PBS with a client encryption key | Client-side AES-256-GCM encryption of backup data before upload. The rebuilt clients also route chunk SHA-256 operations through wolfProvider. |
 | PBS without a client encryption key | No client-side encryption; any at-rest protection depends on the server's datastore storage. |
 
@@ -29,7 +30,9 @@ cat /etc/vzdump.conf
 ```
 
 Keep file archives on a destination whose encryption and unlock behavior have been verified
-using the selected storage guide. Do not use the unencrypted `local` directory for backups.
+using the selected storage guide. For [NFS](../storage-cluster/WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md),
+verify the protected mount and filer encryption separately. Do not use the unencrypted
+`local` directory for backups.
 If the listing includes `local`, remove `backup` from its content types, retaining other
 types in use. Storage configuration is shared across the cluster; make this change once
 per cluster. For the installer defaults, run:
@@ -42,7 +45,7 @@ pvesm status --content backup
 Confirm all listed destinations are encrypted. The verifier does not inspect every job's
 `dumpdir`; this override can bypass the selected storage. Correct jobs before running them.
 
-For a directory destination, configure its actual encrypted mount as a prerequisite. Replace
+For a local directory destination, configure its encrypted mount as a prerequisite. Replace
 `<backup-storage>` with the storage ID and `<encrypted-mount>` with its mounted filesystem:
 
 ```sh
@@ -139,7 +142,7 @@ covers the master-key procedure. Retain a protected off-cluster copy of standalo
 Run this round trip for each guest type and destination used in production. Use guests with
 an operating system and known data. Choose unused restore IDs and an isolated test network
 before starting copies, to avoid duplicate guest identities. Confirm the restore storage and
-staging mount are unlocked and encrypted as in section 2.
+staging protection as in section 2, including NFS credentials and mount security where used.
 
 Inside each source guest, record a representative file's SHA-256 digest and retain a copy
 outside the guest for comparison:
@@ -173,8 +176,9 @@ qm config <new-vmid>
 pct config <new-ctid>
 ```
 
-Check all restored disks and container mount points against the intended storage and the
-backup's contents. After isolating the restored guests' networking, start them:
+Check all restored disks, EFI and TPM-state volumes, and container mount points against
+the intended storage and backup contents. After isolating the restored guests' networking,
+start them:
 
 ```sh
 qm start <new-vmid>

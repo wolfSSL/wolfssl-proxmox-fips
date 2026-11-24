@@ -22,7 +22,8 @@ Prepare nodes in this order:
 3. Complete local [ZFS](WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-ZFS.md) or
    [LUKS](WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-LUKS.md) configuration where selected. Ceph nodes
    instead complete [Ceph, section 2](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md#2-install-and-activate-the-wolfssl-integration)
-   and wait until after section 2 below to initialize Ceph.
+   and wait until after section 2 below to initialize Ceph. Prepare each NFS client using
+   [NFS, section 1](WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md#1-prepare-every-client).
 4. Create the Proxmox cluster, configure corosync and verify every member as below. Only then
    initialize Ceph or place production guests on the cluster.
 
@@ -128,10 +129,11 @@ failures before continuing; on Ceph-prepared nodes, the no-running-Ceph-daemon c
 expected only until [Ceph initialization](../ceph/WOLFSSL-PROXMOX-FIPS-CEPH-DEPLOYMENT.md#3-create-the-cluster-and-encrypted-osds).
 
 After a join, review `/etc/pve/storage.cfg` and its node restrictions. The joining node must
-have the actual encrypted storage and unlock configuration required by every storage assigned
-to it; inheriting the storage definition does not create or unlock its volumes.
+meet every assigned backend's prerequisites. Shared definitions do not create or unlock
+local volumes, or provision NFS machine credentials. Verify NFS access before enabling
+storage on the new member.
 
-## 3. Migrate guests only to available encrypted storage
+## 3. Check storage before migrating guests
 
 Keep Proxmox's migration type `secure`. If setting it in `/etc/pve/datacenter.cfg`, preserve
 any selected migration network:
@@ -156,6 +158,7 @@ Before migration, restore or replication, check the receiving storage on the **t
 | ZFS | `zfs get encryption,encryptionroot,keystatus <pool/dataset>` must show the intended encrypted root and `available`. An `active` Proxmox storage status alone does not prove the key is loaded. |
 | LUKS | `cryptsetup status <mapper-name>` must show the intended active mapping; `findmnt --mountpoint <mountpoint>` must show that mapping as the filesystem source. |
 | Ceph | Complete the Ceph guide's OSD, secure-client and cluster-health checks. |
+| NFS | Run the [client and mount checks](WOLFSSL-PROXMOX-FIPS-DEPLOYMENT-NFS.md#3-verify-access-on-every-assigned-node), requiring `vers=4.2,proto=tcp,sec=krb5p`. Verify filer encryption separately. |
 
 **Warning:** An offline VM or container migration to a closed LUKS directory can write the disk
 onto the unencrypted root filesystem, report success and remove the source. The storage's
@@ -170,7 +173,8 @@ guest's data. Encryption of the source does not ensure encryption at the destina
 ## 4. Replicate and back up encrypted guests
 
 Use [Proxmox storage replication](https://pve.proxmox.com/pve-docs/chapter-pvesr.html) for local
-ZFS storage. LUKS directory storage does not support `pvesr`. Replication uses SSH with the same
+ZFS storage. LUKS directories do not support `pvesr`; shared NFS does not use it.
+Replication uses SSH with the same
 server and client providers as migration; the receiving ZFS dataset encrypts the data under
 its own encryption root. Apply section 3's
 unlock check before replication and check the received volume:
@@ -221,7 +225,8 @@ ha-manager status
 
 After a cold start, quorum can return while local encrypted storage is still locked. Complete
 the ZFS or LUKS guide's unlock and mount checks before starting guests or accepting migrations.
-Ceph OSDs unlock through their cluster-managed keys. Restore each HA resource's intended state
+Ceph OSDs unlock through their cluster-managed keys. For NFS, repeat its client and mount
+checks before guest startup. Restore each HA resource's intended state
 only after storage and cluster verification succeed; for a resource intended to run:
 
 ```sh
